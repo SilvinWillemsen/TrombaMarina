@@ -37,6 +37,7 @@ private:
     //==============================================================================
     double fs;
     std::unique_ptr<Tromba> tromba;
+    
     std::shared_ptr<TrombaString> trombaString;
     std::shared_ptr<Bridge> bridge;
     std::shared_ptr<Body> body;

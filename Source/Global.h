@@ -10,6 +10,8 @@
 
 #pragma once
 
+#define CUBICINTERPOL
+
 namespace Global
 {
     static double clamp (double val, double min, double max)
@@ -26,4 +28,39 @@ namespace Global
         }
         return val;
     }
+#ifdef NOINTERPOL
+    static double interpolation (double* uVec, int bp, double alpha)
+    {
+        return uVec[bp];
+    }
+#endif
+    
+#ifdef LINEARINTERPOL
+    static double interpolation (double* uVec, int bp, double alpha)
+    {
+        return uVec[bp] * (1 - alpha) + uVec[bp + 1] * alpha;
+    }
+#endif
+    
+#ifdef CUBICINTERPOL
+    static double interpolation (double* uVec, int bp, double alpha)
+    {
+        return uVec[bp - 1] * (alpha * (alpha - 1) * (alpha - 2)) / -6.0
+        + uVec[bp] * ((alpha - 1) * (alpha + 1) * (alpha - 2)) / 2.0
+        + uVec[bp + 1] * (alpha * (alpha + 1) * (alpha - 2)) / -2.0
+        + uVec[bp + 2] * (alpha * (alpha + 1) * (alpha - 1)) / 6.0;
+    }
+#endif
+    
+    static inline double exp1 (double x) {
+        x = 1.0 + x / 1024.0;
+        x *= x; x *= x; x *= x; x *= x;
+        x *= x; x *= x; x *= x; x *= x;
+        x *= x; x *= x;
+        return x;
+    }
+    
+    static bool debug = false;
+    static bool initialiseWithExcitation = false;
+    static double outputScaling = debug ? 1.0 : 100000.0;
 }

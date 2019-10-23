@@ -18,7 +18,7 @@
 class Body    : public Component
 {
 public:
-    Body();
+    Body (NamedValueSet& parameters, double k);
     ~Body();
 
     void paint (Graphics&) override;
@@ -30,5 +30,7 @@ public:
     
     void updateStates() {};
 private:
+    double k;
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Body)
 };

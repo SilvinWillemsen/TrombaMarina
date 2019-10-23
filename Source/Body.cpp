@@ -12,7 +12,7 @@
 #include "Body.h"
 
 //==============================================================================
-Body::Body()
+Body::Body (NamedValueSet& parameters, double k) : k (k)
 {
     // In your constructor, you should add any child components, and
     // initialise any special settings that your component needs.

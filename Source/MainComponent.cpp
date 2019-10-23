@@ -42,18 +42,38 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     double k = 1.0 / fs;
     
     NamedValueSet parameters;
+    
+    // string
+    double r = 0.0005;
+    double f0 = 100.0;
+    double rhoS = 7850.0;
+    double A = r * r * double_Pi;
+    double T = (f0 * f0 * 4.0) * rhoS * A;
+    
+    parameters.set ("rhoS", rhoS);
+    parameters.set ("r", r);
+    parameters.set ("A", r * r * double_Pi);
+    parameters.set ("T", T);
+    parameters.set ("ES", 2e11);
+    parameters.set ("Iner", r * r * r * r * double_Pi * 0.25);
+    parameters.set ("s0S", 0.1);
+    parameters.set ("s1S", 0.005);
+    
+    // bridge
+    parameters.set ("M", 0.001);
+    parameters.set ("R", 0.1);
+    parameters.set ("w1", 2.0 * double_Pi * 1000.0);
+
+    // collision
     parameters.set ("K", 5.5e10);
     parameters.set ("alpha", 1.3);
-    parameters.set ("K1", 100);
-    parameters.set ("K3", 1e6);
-    parameters.set ("rho", 7850);
-    parameters.set ("A", 1e-7);
-    parameters.set ("T", 100);
-    parameters.set ("E", 2e11);
-    parameters.set ("Iner", 1e-14);
-    parameters.set ("s0", 1);
-    parameters.set ("s1", 0.005);
-
+    
+    // connection
+    parameters.set ("K1", 1e6);
+    parameters.set ("K3", 100);
+    parameters.set ("sx", 1);
+    parameters.set ("cRatio", 0.5);
+    
     tromba = std::make_unique<Tromba> (parameters, k);
     addAndMakeVisible (tromba.get());
     
@@ -62,7 +82,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     body = tromba->getBody();
     
     setSize (800, 600);
-    Timer::startTimerHz (15);
+    Timer::startTimerHz (60);
 }
 
 void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFill)
@@ -77,14 +97,20 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
     for (int i = 0; i < bufferToFill.numSamples; ++i)
     {
         
-        if (trombaString->isExcited())
+        if (trombaString->isExcited() && !trombaString->shouldBow())
             trombaString->excite();
-        tromba->calculateUpdateEqs();
-        tromba->updateStates();
-        output = tromba->getOutput (0.3);
         
-        channelData1[i] = Global::clamp(output, -1, 1);
-        channelData2[i] = Global::clamp(output, -1, 1);
+        tromba->calculateUpdateEqs();
+        tromba->calculateConnection();
+        tromba->updateStates();
+        output = tromba->getOutput(0.2) * (Global::debug ? 1.0 : Global::outputScaling);
+        if (Global::debug)
+        {
+//             std::cout << output << std::endl;
+        } else {
+            channelData1[i] = Global::clamp(output, -1, 1);
+            channelData2[i] = Global::clamp(output, -1, 1);
+        }
     }
 }
 
