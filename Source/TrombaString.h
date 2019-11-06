@@ -49,6 +49,12 @@ public:
     int getNumPoints() { return N; };
     
     void setBowingParameters (int x, int y);
+    
+    // debug getters
+    int getBowPos() { return bp; };
+    double getq() { return q; };
+    double getb() { return b; };
+    double getNRiterator() { return NRiterator; };
 private:
     double k, h;
     int N;
@@ -73,15 +79,17 @@ private:
 //    bool exciteFlag = Global::initialiseWithExcitation ? (Global::exciteString ? true : false) : false;
     bool exciteFlag = false;
     bool bowFlag = Global::debug ? true : false;
-    bool bowing = false;
+    bool bowing = true;
     
     std::atomic<double> _Fb {1.0};
     std::atomic<double> _Vb {-0.2};
-    std::atomic<double> _bowPos {60.0};
+    std::atomic<double> _bowPos {96};
     double Fb, Vb, alpha;
     int bp;
     
     // Newton variables
     double a, b, uI, uIPrev, uI1, uI2, uIM1, uIM2, uIPrev1, uIPrevM1, cOhSq, kOhhSq, BM, eps, tol, NRiterator, q, qPrev, excitation;
+    
+    double offset;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TrombaString)
 };

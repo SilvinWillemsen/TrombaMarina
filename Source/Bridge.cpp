@@ -13,13 +13,14 @@
 #include "Global.h"
 
 //==============================================================================
-Bridge::Bridge (NamedValueSet& parameters, double k) : k (k),
-                                                      M (*parameters.getVarPointer("M")),
-                                                      w1 (*parameters.getVarPointer("w1")),
-                                                      R (*parameters.getVarPointer("R"))
+Bridge::Bridge (NamedValueSet& parameters, double k) :  k (k),
+                                                        M (*parameters.getVarPointer ("M")),
+                                                        w1 (*parameters.getVarPointer ("w1")),
+                                                        R (*parameters.getVarPointer ("R")),
+                                                        offset(*parameters.getVarPointer ("offset"))
 {
     // initialise state vectors
-    uVecs.resize(3, 0);
+    uVecs.resize(3, offset);
     
     u.resize (3);
     
@@ -33,8 +34,7 @@ Bridge::Bridge (NamedValueSet& parameters, double k) : k (k),
     
     A1 = 2.0 * B1 - B2;
     A2 = -B1 + R / (2 * k);
-    A3 = offset * B2;
-    
+    A3 = B2;
     A1 *= D;
     A2 *= D;
     A3 *= D;
@@ -54,7 +54,7 @@ void Bridge::paint (Graphics& g)
     */
     g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));   // clear the background
     g.setColour(Colours::cyan);
-    g.drawEllipse (getWidth() * 0.5, u[1][0] * Global::outputScaling * 100.0 + getHeight() * 0.5, 5.0, 5.0, 5.0);
+    g.drawEllipse (getWidth() * 0.5, -u[1][0] * Global::outputScaling * 1000.0 + getHeight() * 0.5, 5.0, 5.0, 5.0);
 }
 
 void Bridge::resized()
@@ -66,7 +66,7 @@ void Bridge::resized()
 
 void Bridge::calculateUpdateEq()
 {
-    u[0][0] = A1 * u[1][0] + A2 * u[2][0]; // + A3
+    u[0][0] = A1 * u[1][0] + A2 * u[2][0] + A3 * offset;
 }
 
 void Bridge::updateStates()
@@ -79,8 +79,8 @@ void Bridge::updateStates()
 
 void Bridge::excite()
 {
-    u[1][0] += 1.0 / (Global::outputScaling * 1.0);
-    u[2][0] += 1.0 / (Global::outputScaling * 1.0);
+    u[1][0] += 1.0 / (Global::outputScaling * 10.0);
+    u[2][0] += 1.0 / (Global::outputScaling * 10.0);
 }
 
 void Bridge::mouseDown (const MouseEvent& e)

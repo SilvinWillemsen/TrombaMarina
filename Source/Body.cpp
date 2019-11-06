@@ -81,7 +81,7 @@ void Body::paint (Graphics& g)
 {
     float stateWidth = getWidth() / static_cast<double> (Nx - 4);
     float stateHeight = getHeight() / static_cast<double> (Ny - 4);
-    int scaling = Global::outputScaling;
+    int scaling = Global::outputScaling * 10.0;
     for (int x = 2; x < Nx - 2; ++x)
     {
         for (int y = 2; y < Ny - 2; ++y)
@@ -136,7 +136,7 @@ void Body::excite()
     {
         for (int j = 1; j < excitationWidth; ++j)
         {
-            excitationArea[i][j] = (10.0 / (excitationWidth * excitationWidth) * 0.25 * (1 - cos(2.0 * double_Pi * i / static_cast<int>(excitationWidth+1))) * (1 - cos(2.0 * double_Pi * j / static_cast<int>(excitationWidth+1)))) / (Global::outputScaling * 10.0);
+            excitationArea[i][j] = (10.0 / (excitationWidth * excitationWidth) * 0.25 * (1 - cos(2.0 * double_Pi * i / static_cast<int>(excitationWidth+1))) * (1 - cos(2.0 * double_Pi * j / static_cast<int>(excitationWidth+1)))) / (Global::outputScaling * 100.0);
         }
     }
     

@@ -10,7 +10,7 @@
 
 #pragma once
 
-#define CUBICINTERPOL
+#define NOINTERPOL
 
 namespace Global
 {
@@ -85,5 +85,5 @@ namespace Global
     static bool initialiseWithExcitation = false;
     static bool exciteString = false;
     static bool exciteBody = false;
-    static double outputScaling = debug ? 1.0 : 10000.0;
+    static double outputScaling = debug ? 1.0 : 1000.0;
 }

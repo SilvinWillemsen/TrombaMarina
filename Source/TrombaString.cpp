@@ -19,7 +19,8 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
                                                                     E (*parameters.getVarPointer("ES")),
                                                                     Iner (*parameters.getVarPointer("Iner")),
                                                                     s0 (*parameters.getVarPointer("s0S")),
-                                                                    s1 (*parameters.getVarPointer("s1S"))
+                                                                    s1 (*parameters.getVarPointer("s1S")),
+                                                                    offset (*parameters.getVarPointer("offset"))
 {
     
     // calculate wave speed and stiffness coefficient
@@ -40,7 +41,7 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
     uVecs.reserve (3);
     
     for (int i = 0; i < 3; ++i)
-        uVecs.push_back (std::vector<double> (N, 0));
+        uVecs.push_back (std::vector<double> (N, offset));
     
     u.resize (3);
     
@@ -80,13 +81,19 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
     A4 *= D;
     A5 *= D;
     
-    E1 = k * k * (1.0 / h) * BM;
+    s0 *= rho * A;
+    s1 *= rho * A;
+    b2 = (2.0 * s1) / (k * h * h);
     
+    E1 = (1.0 / h) * BM / (rho * A / (k * k) + s0 / k) ;
+
     qPrev = -_Vb.load();
     
     if (Global::debug)
+    {
+        bp = _bowPos.load();
         setBowingParameters (0.0, 0.0);
-
+    }
 }
 
 TrombaString::~TrombaString()
@@ -115,17 +122,18 @@ void TrombaString::resized()
 
 Path TrombaString::visualiseState()
 {
+    int visualScaling = Global::outputScaling * 1000;
+    
     auto stringBounds = getHeight() / 2.0;
     Path stringPath;
-    stringPath.startNewSubPath (0, stringBounds);
+    stringPath.startNewSubPath (0, stringBounds - visualScaling * offset);
     int stateWidth = getWidth();
     auto spacing = stateWidth / static_cast<double>(N);
     auto x = spacing;
     
     for (int y = 1; y < N; y++)
     {
-        int visualScaling = Global::outputScaling * 100;
-        float newY = -u[1][y] * visualScaling + stringBounds;
+        float newY = -u[1][y] * visualScaling + stringBounds; // POSIT
         
         if (isnan(x) || isinf(abs(x) || isnan(newY) || isinf(abs(newY))))
         {
@@ -137,7 +145,7 @@ Path TrombaString::visualiseState()
         stringPath.lineTo(x, newY);
         x += spacing;
     }
-    stringPath.lineTo(stateWidth, stringBounds);
+    stringPath.lineTo(stateWidth, stringBounds - visualScaling * offset);
     return stringPath;
 }
 
@@ -160,7 +168,7 @@ void TrombaString::calculateUpdateEq()
         bp = floor (_bowPos.load());
         alpha = _bowPos.load() - bp;
         NRbow();
-        excitation = E1 * Fb * q * Global::exp1 (-a * q * q);
+        excitation = E1 * Fb * q * exp (-a * q * q);
         Global::extrapolation(u[0], bp, alpha, -excitation);
     }
     
@@ -188,7 +196,7 @@ void TrombaString::excite()
     int startIdx = Global::clamp (loc - width / 2.0, 2, N - 2 - width);
     for (int i = 0; i < width; ++i)
     {
-        double val = (1 - cos (2 * double_Pi * i / width)) * (Global::debug ? 0.5 : 0.5 / (Global::outputScaling));
+        double val = (1 - cos (2 * double_Pi * i / width)) * (Global::debug ? 0.5 : 0.5 / (Global::outputScaling * 10));
         u[1][startIdx + i] = u[1][startIdx + i] + val;
         u[2][startIdx + i] = u[2][startIdx + i] + val;
     }
@@ -209,7 +217,7 @@ void TrombaString::NRbow()
     
     
     // Calculate precalculable part
-    b = 2.0 / k * Vb - b1 * (uI - uIPrev) - cOhSq * (uI1 - 2.0 * uI + uIM1) + kOhhSq * (uI2 - 4.0 * uI1 + 6.0 * uI - 4.0 * uIM1 + uIM2) + 2.0 * s0 * Vb - b2 * ((uI1 - 2 * uI + uIM1) - (uIPrev1 - 2.0 * uIPrev + uIPrevM1));
+    b = 2.0 / k * Vb + 2.0 * s0 * Vb - b1 * (uI - uIPrev) - cOhSq * (uI1 - 2.0 * uI + uIM1) + kOhhSq * (uI2 - 4.0 * uI1 + 6.0 * uI - 4.0 * uIM1 + uIM2) - b2 * ((uI1 - 2 * uI + uIM1) - (uIPrev1 - 2.0 * uIPrev + uIPrevM1));
     
     // error term
     eps = 1;
@@ -224,8 +232,8 @@ void TrombaString::NRbow()
 //        q = qPrev - (Fb * BM * qPrev * exp (-a * qPrev * qPrev) + 2.0 * qPrev / k + 2.0 * s0 * qPrev + b) /
 //        (Fb * BM * (1.0 - 2.0 * a * qPrev * qPrev) * exp (-a * qPrev * qPrev) + 2.0 / k + 2.0 * s0);
         
-        q = qPrev - (1.0 / (rho * A * h) * Fb * BM * qPrev * exp (-a * qPrev * qPrev) + 2.0 * qPrev / k + 2.0 * s0 * qPrev + b) /
-                (1.0 / (rho * A * h) * Fb * BM * (1.0 - 2.0 * a * qPrev * qPrev) * exp (-a * qPrev * qPrev) + 2.0 / k + 2.0 * s0);
+        q = qPrev - (Fb * BM * qPrev * exp (-a * qPrev * qPrev) + 2.0 * qPrev / k + 2.0 * s0 * qPrev + b) /
+                (Fb * BM * (1.0 - 2.0 * a * qPrev * qPrev) * exp (-a * qPrev * qPrev) + 2.0 / k + 2.0 * s0);
         eps = std::abs (q - qPrev);
         qPrev = q;
         ++NRiterator;
@@ -266,8 +274,8 @@ void TrombaString::setBowingParameters (int x, int y)
     bowFlag = true;
     
     _Vb.store (Global::debug ? -0.2 : (yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
-    _Fb.store (1.0);
+    _Fb.store (0.05);
     
-    int loc = Global::debug ? floor(N * 0.5) + 5 : floor (N * static_cast<float> (xPos) / static_cast<float> (getWidth()));
+    int loc = Global::debug ? bp : floor (N * static_cast<float> (xPos) / static_cast<float> (getWidth()));
     _bowPos.store (Global::clamp (loc, 3, N - 5)); // check whether these values are correct!!);
 }

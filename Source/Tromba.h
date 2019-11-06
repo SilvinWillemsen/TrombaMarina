@@ -34,7 +34,7 @@ public:
     void calculateUpdateEqs();
     void updateStates();
     
-    double getOutput() { return bridge->getOutput(); };
+    double getOutput() { return bridge->getOutput() * 10; };
     double getOutput (double ratio) { return trombaString->getOutput (ratio); };
     double getOutput (double ratioX, double ratioY) { return body->getOutput (ratioX, ratioY); };
     

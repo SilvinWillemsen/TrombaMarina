@@ -108,6 +108,19 @@ Tromba::Tromba (NamedValueSet& parameters, double k)  : k (k),
     oOhS = 1.0 / hS;
     oOFourhPSq = 1.0 / (4.0 * hP * hP);
     
+    s0S *= rhoS * A;
+    s1S *= rhoS * A;
+    s0P *= rhoP * H;
+    s1P *= rhoP * H;
+    
+    etaCol = body->getStateAt(1, cPX, cPY) - bridge->getState(1);
+    etaColPrev = etaCol;
+    etaColNext = etaCol; // probably not necessary
+    
+    psiPrev = 0;
+    
+    
+    
 }
 
 Tromba::~Tromba()
@@ -116,6 +129,7 @@ Tromba::~Tromba()
 
 void Tromba::paint (Graphics& g)
 {
+    g.setColour (Colours::yellow);
 }
 
 void Tromba::resized()
@@ -136,10 +150,12 @@ void Tromba::calculateConnection()
     if (phiPlus == 0)
         FalphaTick = 0;
     else // one division (SEE WHETHER SOME STUFF CAN BE PRECALCULATED HERE)
+    {
         FalphaTick = (phiPlus * hS * (rhoS * A + s0S * k) * (4.0 * M + 2.0 * R * k + g * g * k * k)
                       * ((4.0 * M + 2.0 * R * k + g * g * k * k) * (2.0 * k * K1 * etaSpring + phiMinus * etaSpringPrev + phiPlus * trombaString->getStateAt (0, cP))
                       - phiPlus * ((4.0 * M + 2.0 * R * k) * bridge->getState (0) - g * g * k * k * etaColPrev + 4.0 * k * k * psiPrev * g)))
                       / (varPsi * phiPlus * (4.0 * M + 2.0 * R * k + g * g * k * k));
+    }
     
 //    trombaString->addToStateAt (cP, -FalphaTick / hS * DS);
 //    bridge->setState (A1B * bridge->getState (1) + A2B * bridge->getState (2) + FalphaTick * DB);
@@ -215,9 +231,11 @@ void Tromba::calculateUpdateEqs()
 void Tromba::updateStates()
 {
 
-    if (Global::debug)
-        std::cout << "Sample " << curSample << ", Plate value (5,5): " << body->getStateAt(0, 5, 5) << ", g value: " << g << ", FalphaTick value " << FalphaTick << ", Falpha value: " << Falpha << std::endl;
-    
+//    if (Global::debug)
+//        std::cout << "Sample " << curSample << ", String value (bP): " << trombaString->getStateAt(0, trombaString->getBowPos()) << ", g value: " << g << ", FalphaTick value " << FalphaTick << ", Falpha value: " << Falpha << std::endl;
+//    std::cout << "Sample " << curSample << ", String value (bP): " << trombaString->getStateAt(0, trombaString->getBowPos()) << ", q: " << trombaString->getq()
+//    << ", b:" << trombaString->getb() << ", NRiterator: " << trombaString->getNRiterator() << std::endl;
+//    std::cout << "Sample " << curSample << ", String value (bP): " << trombaString->getStateAt(0, 90) << std::endl;
     psiPrev = psi;
     
     etaSpringPrev = etaSpring;

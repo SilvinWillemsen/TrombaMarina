@@ -37,8 +37,8 @@ MainComponent::~MainComponent()
 //==============================================================================
 void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRate)
 {
-    if (Global::debug)
-    {
+//    if (Global::debug)
+//    {
         continueButton = std::make_unique<TextButton>("ContinueButton");
         continueFlag.store (false);
         continueButton->setButtonText ("Continue");
@@ -55,7 +55,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
 //        currentSampleLabel->setColour (Label::backgroundColourId, Colours::black);
         addAndMakeVisible (currentSampleLabel.get());
         
-    }
+//    }
     
     fs = sampleRate;
     
@@ -81,8 +81,9 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     
     // bridge
     parameters.set ("M", 0.001);
-    parameters.set ("R", 0.0);
+    parameters.set ("R", 0.1);
     parameters.set ("w1", 2.0 * double_Pi * 1000.0);
+    parameters.set ("offset", 1e-6);
     
     // body
     parameters.set ("rhoP", 7850.0);
@@ -132,28 +133,33 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
         if (body->isExcited())
             body->excite();
         
-//        if (Global::debug)
-//        {
+        if (Global::debug)
+        {
+            if (continueFlag.load() == true)
+            {
+                if (curSample % 1000 == 0)
+                    continueFlag.store (false);
+                tromba->setCurSample (curSample);
+                tromba->calculateUpdateEqs();
+                tromba->calculateCollision();
+                tromba->calculateConnection();
+                tromba->solveSystem();
+                tromba->updateStates();
+                ++curSample;
+            }
+        } else {
 //            if (continueFlag.load() == true)
 //            {
-////                if (curSample >= 1000)
-////                    continueFlag.store (false);
-//                tromba->setCurSample (curSample);
-//                tromba->calculateUpdateEqs();
-//                tromba->calculateCollision();
-//                tromba->calculateConnection();
-//                tromba->solveSystem();
-//                tromba->updateStates();
-//                ++curSample;
+////                if (curSample ==)
+//                    continueFlag.store (false);
+                tromba->calculateUpdateEqs();
+                tromba->calculateCollision();
+                tromba->calculateConnection();
+                tromba->solveSystem();
+                tromba->updateStates();
 //            }
-//        } else {
-        tromba->calculateUpdateEqs();
-        tromba->calculateCollision();
-        tromba->calculateConnection();
-        tromba->solveSystem();
-        tromba->updateStates();
-//        }
-        output = tromba->getOutput(0.5) * (Global::debug ? 1.0 : Global::outputScaling);
+        }
+        output = tromba->getOutput() * (Global::debug ? 1.0 : Global::outputScaling);
         channelData1[i] = Global::clamp(output, -1, 1);
         channelData2[i] = Global::clamp(output, -1, 1);
     }
@@ -180,8 +186,8 @@ void MainComponent::resized()
 {
     if (tromba.get() != nullptr)
     {
-        if (Global::debug)
-        {
+//        if (Global::debug)
+//        {
             int margin = 5;
             Rectangle<int> totalArea = getLocalBounds();
             Rectangle<int> debugArea = totalArea.removeFromBottom (Global::debugButtonsHeight);
@@ -192,9 +198,9 @@ void MainComponent::resized()
             stateLabel->setBounds (debugArea.removeFromLeft (100));
             debugArea.removeFromRight (margin);
             currentSampleLabel->setBounds (debugArea.removeFromLeft (100));
-        } else {
-            tromba->setBounds (getLocalBounds());
-        }
+//        } else {
+//            tromba->setBounds (getLocalBounds());
+//        }
     }
 }
 
