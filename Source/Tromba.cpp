@@ -22,12 +22,18 @@ Tromba::Tromba (NamedValueSet& parameters, double k)  : k (k),
                                                         M (*parameters.getVarPointer ("M")),
                                                         R (*parameters.getVarPointer ("R")),
                                                         w1 (*parameters.getVarPointer ("w1")),
+                                                        rhoP (*parameters.getVarPointer ("rhoP")),
+                                                        H (*parameters.getVarPointer ("H")),
+                                                        s0P (*parameters.getVarPointer ("s0P")),
                                                         K (*parameters.getVarPointer ("K")),
-                                                        alpha (*parameters.getVarPointer ("alpha")),
+                                                        alph (*parameters.getVarPointer ("alpha")),
                                                         K1 (*parameters.getVarPointer ("K1")),
                                                         K3 (*parameters.getVarPointer ("K3")),
                                                         sx (*parameters.getVarPointer ("sx")),
-                                                        cRatio (*parameters.getVarPointer ("cRatio"))
+                                                        connRatio (*parameters.getVarPointer ("connRatio")),
+                                                        colRatioX (*parameters.getVarPointer ("colRatioX")),
+                                                        colRatioY (*parameters.getVarPointer ("colRatioY"))
+
 {
     trombaString = std::make_shared<TrombaString> (parameters, k);
     bridge = std::make_shared<Bridge> (parameters, k);
@@ -39,15 +45,20 @@ Tromba::Tromba (NamedValueSet& parameters, double k)  : k (k),
     
     if (Global::initialiseWithExcitation)
     {
-        trombaString->excite();
+        if (Global::exciteString)
+            trombaString->excite();
+        if (Global::exciteBody)
+            body->excite();
     }
-    etaSpring = trombaString->getStateAt (1, floor(cRatio * trombaString->getNumPoints())) - bridge->getState(1);
+    etaSpring = trombaString->getStateAt (1, floor(connRatio * trombaString->getNumPoints())) - bridge->getState(1);
     etaSpringPrev = etaSpring;
     
     hS = 1.0 / trombaString->getNumPoints();
-    cP = floor (trombaString->getNumPoints() * cRatio);
+    cP = floor (trombaString->getNumPoints() * connRatio); // connection point
+    cPX = floor (body->getNumHorPoints() * colRatioX);
+    cPY = floor (body->getNumVertPoints() * colRatioY);
     
-    
+    //String
     B1S = rhoS * A / (k * k);
     B2S = T / (hS * hS);
     B3S = ES * Iner / (hS * hS * hS * hS);
@@ -68,6 +79,7 @@ Tromba::Tromba (NamedValueSet& parameters, double k)  : k (k),
     A4S *= DS;
     A5S *= DS;
     
+    // Bridge
     
     B1B = M / (k * k);
     B2B = R / (2.0 * k);
@@ -79,6 +91,23 @@ Tromba::Tromba (NamedValueSet& parameters, double k)  : k (k),
     
     A1B *= DB;
     A2B *= DB;
+    
+    // Body
+    hP = body->getGridSpacing();
+    B1P = rhoP * H / (k * k);
+    B2P = s0P / k;
+    DP = 1.0 / (B1P + B2P);
+    
+    // Variables for linear system solve
+    a11 = B1S + B4S;
+    a12 = 0.0;
+    a21 = 0.0;
+    a31 = 0.0;
+    
+    // the rest changes every loop
+    oOhS = 1.0 / hS;
+    oOFourhPSq = 1.0 / (4.0 * hP * hP);
+    
 }
 
 Tromba::~Tromba()
@@ -112,35 +141,94 @@ void Tromba::calculateConnection()
                       - phiPlus * ((4.0 * M + 2.0 * R * k) * bridge->getState (0) - g * g * k * k * etaColPrev + 4.0 * k * k * psiPrev * g)))
                       / (varPsi * phiPlus * (4.0 * M + 2.0 * R * k + g * g * k * k));
     
+//    trombaString->addToStateAt (cP, -FalphaTick / hS * DS);
+//    bridge->setState (A1B * bridge->getState (1) + A2B * bridge->getState (2) + FalphaTick * DB);
     
-//    trombaString->setStateAt (cP, (trombaString->getStateAt(0, cP) * (B1S + B4S) + FalphaTick / (hS)) / (B1S + B4S));
-//    if (trombaString->getStateAt (0, cP) != 0)
-//        std::cout << "wait" << std::endl;
-    trombaString->addToStateAt (cP, -FalphaTick / hS * DS);
-//    double bridgeState = (M / (k * k) * (2.0 * bridge->getState(1) - bridge->getState(2)) - M * w1 * w1 * (bridge->getState(1)) + R / (2.0 * k) * bridge->getState(2) + FalphaTick) / (M / (k * k) + R / (2.0*k));
-    bridge->setState (A1B * bridge->getState (1) + A2B * bridge->getState (2) + FalphaTick * DB);
-//    bridge->setState (bridgeState);
+
 }
 
 void Tromba::calculateCollision()
 {
+    g = 0;
+    if (alph == 1)
+    {
+        if (etaCol > 0)
+            g = sqrt(K * (alph + 1.0) / 2.0);
+    } else {
+        if (etaCol > 0) // subplus
+            g = sqrt(K * (alph + 1.0) / 2.0) * pow(etaCol, (alph - 1) * 0.5);
+    }
+}
+
+void Tromba::solveSystem()
+{
+    /*
+        [   rhoS * A / (k * k) + s0S / k                    0                                      -Theta / hS                     ]
+    A = |              0                   M / (k * k) + R / (2 * k) + g * g / 4                 Theta - g * g / 4                 |
+        [              0                         -g * g / (4 * hP * hP)           rhoP * H / (k * k) + s0P / k + g * g / (4 * hP)  ]
+     
+    */
+
+    // find determinant
+    plateTerm = (phiPlus * hS * (rhoS * A + s0S * k) * (4.0 * M + 2.0 * R * k + g * g * k * k) * g * g * k * k) / (varPsi * (4.0 * M + 2.0 * R * k + g * g * k * k));
+    a13 = -plateTerm * oOhS;
+    a22 = M / (k * k) + R / (2.0 * k) + g * g / 4.0;
+    a23 = plateTerm - g * g / 4.0;
+    a32 =  -g * g / (4.0 * hP * hP);
+    a33 = rhoP * H / (k * k) + s0P / k + g * g / (4.0 * hP * hP);
+    oOdet = 1.0 / (a11 * (a22 * a33 - a23 * a32));
     
+    b11 = (a22 * a33 - a32 * a23) * oOdet;
+    b12 = -(-a32 * a13) * oOdet;
+    b13 = -a22 * a13 * oOdet;
+    b21 = 0; // doesn't have to be assigned every time
+    b22 = a11 * a33 * oOdet;
+    b23 = -(a11 * a23) * oOdet;
+    b31 = 0; // doesn't have to be assigned every time
+    b32 = -(a11 * a32) * oOdet;
+    b33 = a11 * a22 * oOdet;
+    
+    c1 = trombaString->getStateAt (0, cP) * (B1S + B4S) - FalphaTick / hS;
+    c2 = bridge->getState(0) * (B1B + B2B) - g * g / 4.0 * etaColPrev + psiPrev * g + FalphaTick;
+    c3 = body->getStateAt (0, cPX, cPY) * (B1P + B2P) + (g * g / 4.0 * etaColPrev - psiPrev * g) / (hP * hP);
+
+    solut1 = b11 * c1 + b12 * c2 + b13 * c3;
+    solut2 = b21 * c1 + b22 * c2 + b23 * c3;
+    solut3 = b31 * c1 + b32 * c2 + b33 * c3;
+    bridge->setState (solut2);
+    Falpha = FalphaTick - plateTerm * solut3;
+    etaColNext = solut3 - solut2;
+    trombaString->addToStateAt (cP, -Falpha / hS * DS);
+
+    body->addToStateAt (cPX, cPY, -1.0 / (hP * hP) * (g * g / 4.0 * (etaColNext - etaColPrev) + psiPrev * g) * DP);
+    bridge->setState (solut2);
+    psi = psiPrev + 0.5 * g * (etaColNext - etaColPrev);
 }
 
 void Tromba::calculateUpdateEqs()
 {
     trombaString->calculateUpdateEq();
     bridge->calculateUpdateEq();
+    body->calculateUpdateEq();
 }
 
 void Tromba::updateStates()
 {
+
+    if (Global::debug)
+        std::cout << "Sample " << curSample << ", Plate value (5,5): " << body->getStateAt(0, 5, 5) << ", g value: " << g << ", FalphaTick value " << FalphaTick << ", Falpha value: " << Falpha << std::endl;
+    
+    psiPrev = psi;
+    
     etaSpringPrev = etaSpring;
     etaSpring = trombaString->getStateAt (0, cP) - bridge->getState (0);
+    
+    etaColPrev = etaCol;
+    etaCol = etaColNext;
 
+//    if (psiPrev != 0)
+//        std::cout << "wait" << std::endl;
     trombaString->updateStates();
     bridge->updateStates();
     body->updateStates();
-//    etaPrev = eta;
-//    eta = etaNext;
 }

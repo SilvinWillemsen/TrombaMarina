@@ -15,7 +15,7 @@
     This component lives inside our window, and this is where you should put all
     your controls and content.
 */
-class MainComponent   : public AudioAppComponent, public Timer
+class MainComponent   : public AudioAppComponent, public Timer, public Button::Listener
 {
 public:
     //==============================================================================
@@ -32,6 +32,8 @@ public:
     void resized() override;
     
     void timerCallback() override;
+    
+    void buttonClicked (Button* button) override;
 
 private:
     //==============================================================================
@@ -42,5 +44,11 @@ private:
     std::shared_ptr<Bridge> bridge;
     std::shared_ptr<Body> body;
 
+    std::unique_ptr<TextButton> continueButton;
+    std::unique_ptr<Label> stateLabel;
+    std::unique_ptr<Label> currentSampleLabel;
+    std::atomic<bool> continueFlag;
+    
+    unsigned long curSample = 1; // first sample is index 1 (like Matlab)
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

@@ -33,12 +33,23 @@ namespace Global
     {
         return uVec[bp];
     }
+    
+    static void extrapolation (double* uVec, int bp, double alpha, double val)
+    {
+        uVec[bp] = uVec[bp] + val;
+    }
 #endif
     
 #ifdef LINEARINTERPOL
     static double interpolation (double* uVec, int bp, double alpha)
     {
         return uVec[bp] * (1 - alpha) + uVec[bp + 1] * alpha;
+    }
+    
+    static void extrapolation (double* uVec, int bp, double alpha, double val)
+    {
+        uVec[bp] = uVec[bp] + val * (1 - alpha);
+        uVec[bp + 1] = uVec[bp + 1] + val * alpha;
     }
 #endif
     
@@ -49,6 +60,15 @@ namespace Global
         + uVec[bp] * ((alpha - 1) * (alpha + 1) * (alpha - 2)) / 2.0
         + uVec[bp + 1] * (alpha * (alpha + 1) * (alpha - 2)) / -2.0
         + uVec[bp + 2] * (alpha * (alpha + 1) * (alpha - 1)) / 6.0;
+    }
+    
+    static void extrapolation (double* uVec, int bp, double alpha, double val)
+    {
+        uVec[bp - 1] = uVec[bp - 1] + val * (alpha * (alpha - 1) * (alpha - 2)) / -6.0;
+        uVec[bp] = uVec[bp] + val * ((alpha - 1) * (alpha + 1) * (alpha - 2)) / 2.0;
+        uVec[bp + 1] = uVec[bp + 1] + val * (alpha * (alpha + 1) * (alpha - 2)) / -2.0;
+        uVec[bp + 2] = uVec[bp + 2] + val * (alpha * (alpha + 1) * (alpha - 1)) / 6.0;
+        
     }
 #endif
     
@@ -61,6 +81,9 @@ namespace Global
     }
     
     static bool debug = false;
+    static int debugButtonsHeight = 100;
     static bool initialiseWithExcitation = false;
-    static double outputScaling = debug ? 1.0 : 100000.0;
+    static bool exciteString = false;
+    static bool exciteBody = false;
+    static double outputScaling = debug ? 1.0 : 10000.0;
 }

@@ -37,6 +37,26 @@ MainComponent::~MainComponent()
 //==============================================================================
 void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRate)
 {
+    if (Global::debug)
+    {
+        continueButton = std::make_unique<TextButton>("ContinueButton");
+        continueFlag.store (false);
+        continueButton->setButtonText ("Continue");
+        addAndMakeVisible (continueButton.get());
+        continueButton->addListener (this);
+        
+        stateLabel = std::make_unique<Label>("StateLabel");
+        stateLabel->setColour (Label::textColourId, Colours::white);
+//        stateLabel->setColour (Label::backgroundColourId, Colours::black);
+        addAndMakeVisible (stateLabel.get());
+        
+        currentSampleLabel = std::make_unique<Label>("CurrentSampleLabel");
+        currentSampleLabel->setColour (Label::textColourId, Colours::white);
+//        currentSampleLabel->setColour (Label::backgroundColourId, Colours::black);
+        addAndMakeVisible (currentSampleLabel.get());
+        
+    }
+    
     fs = sampleRate;
     
     double k = 1.0 / fs;
@@ -61,18 +81,29 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     
     // bridge
     parameters.set ("M", 0.001);
-    parameters.set ("R", 0.1);
+    parameters.set ("R", 0.0);
     parameters.set ("w1", 2.0 * double_Pi * 1000.0);
-
+    
+    // body
+    parameters.set ("rhoP", 7850.0);
+    parameters.set ("H", 0.001);
+    parameters.set ("EP", 2e11);
+    parameters.set ("Lx", 0.5);
+    parameters.set ("Ly", 0.5);
+    parameters.set ("s0P", 5);
+    parameters.set ("s1P", 0.01);
+    
     // collision
-    parameters.set ("K", 5.5e10);
+    parameters.set ("K", 5.0e10);
     parameters.set ("alpha", 1.3);
+    parameters.set ("colRatioX", 0.5);
+    parameters.set ("colRatioY", 0.5);
     
     // connection
     parameters.set ("K1", 1e6);
     parameters.set ("K3", 100);
-    parameters.set ("sx", 1);
-    parameters.set ("cRatio", 0.5);
+    parameters.set ("sx", 0);
+    parameters.set ("connRatio", 0.2);
     
     tromba = std::make_unique<Tromba> (parameters, k);
     addAndMakeVisible (tromba.get());
@@ -96,21 +127,35 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
     float output = 0.0;
     for (int i = 0; i < bufferToFill.numSamples; ++i)
     {
-        
         if (trombaString->isExcited() && !trombaString->shouldBow())
             trombaString->excite();
+        if (body->isExcited())
+            body->excite();
         
+//        if (Global::debug)
+//        {
+//            if (continueFlag.load() == true)
+//            {
+////                if (curSample >= 1000)
+////                    continueFlag.store (false);
+//                tromba->setCurSample (curSample);
+//                tromba->calculateUpdateEqs();
+//                tromba->calculateCollision();
+//                tromba->calculateConnection();
+//                tromba->solveSystem();
+//                tromba->updateStates();
+//                ++curSample;
+//            }
+//        } else {
         tromba->calculateUpdateEqs();
+        tromba->calculateCollision();
         tromba->calculateConnection();
+        tromba->solveSystem();
         tromba->updateStates();
-        output = tromba->getOutput(0.2) * (Global::debug ? 1.0 : Global::outputScaling);
-        if (Global::debug)
-        {
-//             std::cout << output << std::endl;
-        } else {
-            channelData1[i] = Global::clamp(output, -1, 1);
-            channelData2[i] = Global::clamp(output, -1, 1);
-        }
+//        }
+        output = tromba->getOutput(0.5) * (Global::debug ? 1.0 : Global::outputScaling);
+        channelData1[i] = Global::clamp(output, -1, 1);
+        channelData2[i] = Global::clamp(output, -1, 1);
     }
 }
 
@@ -135,11 +180,39 @@ void MainComponent::resized()
 {
     if (tromba.get() != nullptr)
     {
-        tromba->setBounds(getLocalBounds());
+        if (Global::debug)
+        {
+            int margin = 5;
+            Rectangle<int> totalArea = getLocalBounds();
+            Rectangle<int> debugArea = totalArea.removeFromBottom (Global::debugButtonsHeight);
+            debugArea.reduce (margin, margin);
+            tromba->setBounds (totalArea);
+            continueButton->setBounds (debugArea.removeFromRight (100));
+            debugArea.removeFromRight (margin);
+            stateLabel->setBounds (debugArea.removeFromLeft (100));
+            debugArea.removeFromRight (margin);
+            currentSampleLabel->setBounds (debugArea.removeFromLeft (100));
+        } else {
+            tromba->setBounds (getLocalBounds());
+        }
     }
 }
 
 void MainComponent::timerCallback()
 {
     repaint();
+//    if (Global::debug)
+//    {
+////        stateLabel->setText (String (body->getStateAt(1, 5, 5)), dontSendNotification);
+//////        stateLabel->setText (String (trombaString->getStateAt (1, floor (trombaString->getNumPoints() / 2.0))), dontSendNotification);
+////        currentSampleLabel->setText (String (curSample), dontSendNotification);
+//    }
+}
+
+void MainComponent::buttonClicked (Button* button)
+{
+    if (button == continueButton.get())
+    {
+        continueFlag.store (true);
+    }
 }

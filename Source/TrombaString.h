@@ -48,6 +48,7 @@ public:
     
     int getNumPoints() { return N; };
     
+    void setBowingParameters (int x, int y);
 private:
     double k, h;
     int N;
@@ -69,9 +70,10 @@ private:
     
     // excitation variables
     int xPos, yPos;
-    bool exciteFlag = Global::initialiseWithExcitation;
-    bool bowFlag = false;
-    bool bowing = true;
+//    bool exciteFlag = Global::initialiseWithExcitation ? (Global::exciteString ? true : false) : false;
+    bool exciteFlag = false;
+    bool bowFlag = Global::debug ? true : false;
+    bool bowing = false;
     
     std::atomic<double> _Fb {1.0};
     std::atomic<double> _Vb {-0.2};

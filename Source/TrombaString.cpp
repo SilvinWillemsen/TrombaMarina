@@ -12,14 +12,14 @@
 #include "TrombaString.h"
 
 //==============================================================================
-TrombaString::TrombaString (NamedValueSet& parameters, double k) : k (k),
-                                                                  rho (*parameters.getVarPointer("rhoS")),
-                                                                  A (*parameters.getVarPointer("A")),
-                                                                  T (*parameters.getVarPointer("T")),
-                                                                  E (*parameters.getVarPointer("ES")),
-                                                                  Iner (*parameters.getVarPointer("Iner")),
-                                                                  s0 (*parameters.getVarPointer("s0S")),
-                                                                  s1 (*parameters.getVarPointer("s1S"))
+TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
+                                                                    rho (*parameters.getVarPointer("rhoS")),
+                                                                    A (*parameters.getVarPointer("A")),
+                                                                    T (*parameters.getVarPointer("T")),
+                                                                    E (*parameters.getVarPointer("ES")),
+                                                                    Iner (*parameters.getVarPointer("Iner")),
+                                                                    s0 (*parameters.getVarPointer("s0S")),
+                                                                    s1 (*parameters.getVarPointer("s1S"))
 {
     
     // calculate wave speed and stiffness coefficient
@@ -28,6 +28,11 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) : k (k),
     
     // calculate grid spacing and number of points
     h = sqrt ((cSq * k * k + 4.0 * s1 * k + sqrt(pow(cSq * k * k + 4.0 * s1 * k, 2) + 16.0 * kappaSq * k * k)) / 2.0);
+    
+//    // Scale damping by rho * A
+//    s0 = s0 * rho * A;
+//    s1 = s1 * rho * A;
+    
     N = floor (1.0 / h);
     h = 1.0 / N;
     
@@ -78,6 +83,9 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) : k (k),
     E1 = k * k * (1.0 / h) * BM;
     
     qPrev = -_Vb.load();
+    
+    if (Global::debug)
+        setBowingParameters (0.0, 0.0);
 
 }
 
@@ -117,7 +125,7 @@ Path TrombaString::visualiseState()
     for (int y = 1; y < N; y++)
     {
         int visualScaling = Global::outputScaling * 100;
-        float newY = u[0][y] * visualScaling + stringBounds;
+        float newY = -u[1][y] * visualScaling + stringBounds;
         
         if (isnan(x) || isinf(abs(x) || isnan(newY) || isinf(abs(newY))))
         {
@@ -153,10 +161,7 @@ void TrombaString::calculateUpdateEq()
         alpha = _bowPos.load() - bp;
         NRbow();
         excitation = E1 * Fb * q * Global::exp1 (-a * q * q);
-//        u[0][bp - 1] = u[0][bp - 1] - excitation * (alpha * (alpha - 1) * (alpha - 2)) / -6.0;
-        u[0][bp] = u[0][bp] - excitation;// * ((alpha - 1) * (alpha + 1) * (alpha - 2)) / 2.0;
-//        u[0][bp + 1] = u[0][bp + 1] - excitation * (alpha * (alpha + 1) * (alpha - 2)) / -2.0;
-//        u[0][bp + 2] = u[0][bp + 2] - excitation * (alpha * (alpha + 1) * (alpha - 1)) / 6.0;
+        Global::extrapolation(u[0], bp, alpha, -excitation);
     }
     
 }
@@ -177,13 +182,15 @@ void TrombaString::excite()
 //    int width = floor ((N * 2.0) / 5.0) / 2.0;
     int width = 10;
     int loc = floor (N * static_cast<float>(xPos) / static_cast<float>(getWidth()));
-    loc = floor(N / 2.0);
+    if (Global::debug)
+        loc = floor(N / 4.0);
+    
     int startIdx = Global::clamp (loc - width / 2.0, 2, N - 2 - width);
     for (int i = 0; i < width; ++i)
     {
-        double val = (1 - cos (2 * double_Pi * i / width)) * (Global::debug ? 0.5 : 0.5 / (Global::outputScaling * 100.0));
-        u[1][startIdx + i] = u[1][startIdx + i] - val;
-        u[2][startIdx + i] = u[2][startIdx + i] - val;
+        double val = (1 - cos (2 * double_Pi * i / width)) * (Global::debug ? 0.5 : 0.5 / (Global::outputScaling));
+        u[1][startIdx + i] = u[1][startIdx + i] + val;
+        u[2][startIdx + i] = u[2][startIdx + i] + val;
     }
 }
 
@@ -212,16 +219,22 @@ void TrombaString::NRbow()
     while (eps > tol && NRiterator < 100)
     {
 //        q = qPrev - (Fb * BM * qPrev * exp (-a * qPrev * qPrev) + 2.0 * qPrev / k + 2.0 * s0 * qPrev + b) / (Fb * BM * (1.0 - 2.0 * a * qPrev * qPrev) * exp (-a * qPrev * qPrev) + 2.0 / k + 2.0 * s0);
-        q = qPrev - (Fb * BM * qPrev * exp (-a * qPrev * qPrev) + 2.0 * qPrev / k + 2.0 * s0 * qPrev + b) /
-        (Fb * BM * (1.0 - 2.0 * a * qPrev * qPrev) * exp (-a * qPrev * qPrev) + 2.0 / k + 2.0 * s0);
+        
+        // working
+//        q = qPrev - (Fb * BM * qPrev * exp (-a * qPrev * qPrev) + 2.0 * qPrev / k + 2.0 * s0 * qPrev + b) /
+//        (Fb * BM * (1.0 - 2.0 * a * qPrev * qPrev) * exp (-a * qPrev * qPrev) + 2.0 / k + 2.0 * s0);
+        
+        q = qPrev - (1.0 / (rho * A * h) * Fb * BM * qPrev * exp (-a * qPrev * qPrev) + 2.0 * qPrev / k + 2.0 * s0 * qPrev + b) /
+                (1.0 / (rho * A * h) * Fb * BM * (1.0 - 2.0 * a * qPrev * qPrev) * exp (-a * qPrev * qPrev) + 2.0 / k + 2.0 * s0);
         eps = std::abs (q - qPrev);
         qPrev = q;
         ++NRiterator;
-        if (NRiterator > 10000)
+        if (NRiterator > 98)
         {
             std::cout << "Nope" << std::endl;
         }
     }
+    
 }
 
 void TrombaString::mouseDown (const MouseEvent& e)
@@ -238,14 +251,7 @@ void TrombaString::mouseDrag (const MouseEvent& e)
     if (!bowing)
         return;
     
-    xPos = e.x;
-    yPos = e.y;
-    bowFlag = true;
-    
-    _Vb.store (-0.2);
-    _Fb.store (1.0);
-    int loc = floor (N * static_cast<float> (xPos) / static_cast<float> (getWidth()));
-    _bowPos.store (Global::clamp (loc, 3, N - 5)); // check whether these values are correct!!);
+    setBowingParameters (e.x, e.y);
 }
 
 void TrombaString::mouseUp (const MouseEvent& e)
@@ -253,3 +259,15 @@ void TrombaString::mouseUp (const MouseEvent& e)
     bowFlag = false;
 }
 
+void TrombaString::setBowingParameters (int x, int y)
+{
+    xPos = x;
+    yPos = y;
+    bowFlag = true;
+    
+    _Vb.store (Global::debug ? -0.2 : (yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
+    _Fb.store (1.0);
+    
+    int loc = Global::debug ? floor(N * 0.5) + 5 : floor (N * static_cast<float> (xPos) / static_cast<float> (getWidth()));
+    _bowPos.store (Global::clamp (loc, 3, N - 5)); // check whether these values are correct!!);
+}

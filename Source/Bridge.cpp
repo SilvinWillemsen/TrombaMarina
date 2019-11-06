@@ -54,8 +54,7 @@ void Bridge::paint (Graphics& g)
     */
     g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));   // clear the background
     g.setColour(Colours::cyan);
-    int scalingFactor = 100000000;
-    g.drawEllipse (getWidth() * 0.5, u[1][0] * scalingFactor + getHeight() * 0.5, 5.0, 5.0, 5.0);
+    g.drawEllipse (getWidth() * 0.5, u[1][0] * Global::outputScaling * 100.0 + getHeight() * 0.5, 5.0, 5.0, 5.0);
 }
 
 void Bridge::resized()
