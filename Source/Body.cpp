@@ -27,8 +27,8 @@ Body::Body (NamedValueSet& parameters, double k) :  k (k),
     h = 2.0 * sqrt(k * (s1 + sqrt(kappaSq + s1 * s1)));
     
     // lower limit on h, otherwise there will be too many points
-    if (h < 0.05)
-        h = 0.05;
+    if (h < 0.03)
+        h = 0.03;
     
 //    // Scale damping by rho * A
 //    s0 = s0 * rho * H;
@@ -38,18 +38,25 @@ Body::Body (NamedValueSet& parameters, double k) :  k (k),
     Ny = floor(Ly/h);
     
     h = std::max (Lx/Nx, Ly/Ny);
-    N = (Nx-1)*(Ny-1);
+    N = Nx * Ny;
     
     // initialise state vectors
     uVecs.reserve (3);
     
+#ifdef CREATECCODE
     for (int i = 0; i < 3; ++i)
-        uVecs.push_back (std::vector<std::vector<double>> (Nx, std::vector<double>(Ny, 0)));
-    
+        uVecs.push_back (std::vector<double> (N, 0));
     u.resize (3);
-    
     for (int i = 0; i < u.size(); ++i)
         u[i] = &uVecs[i][0];
+#else
+    for (int i = 0; i < 3; ++i)
+        uVecs.push_back (std::vector<std::vector<double>> (Nx, std::vector<double> (Ny, 0)));
+    
+    u.resize (3);
+    for (int i = 0; i < u.size(); ++i)
+        u[i] = &uVecs[i][0];
+#endif
 
     
     D = 1.0f / (1.0f + s0 * k);
@@ -71,6 +78,19 @@ Body::Body (NamedValueSet& parameters, double k) :  k (k),
     A6 *= D;
     
     excitationWidth = floor (std::min(Nx, Ny) * 0.2);
+    
+#ifdef CREATECCODE
+    coefficients.reserve(6);
+    coefficients.push_back (A1);
+    coefficients.push_back (A2);
+    coefficients.push_back (A3);
+    coefficients.push_back (A4);
+    coefficients.push_back (A5);
+    coefficients.push_back (A6);
+    
+    updateEqGenerator();
+#endif
+    
 }
 
 Body::~Body()
@@ -79,16 +99,22 @@ Body::~Body()
 
 void Body::paint (Graphics& g)
 {
-    float stateWidth = getWidth() / static_cast<double> (Nx - 4);
-    float stateHeight = getHeight() / static_cast<double> (Ny - 4);
-    int scaling = Global::outputScaling * 10.0;
-    for (int x = 2; x < Nx - 2; ++x)
+    int startIdx = 2;
+    float stateWidth = getWidth() / static_cast<double> (Nx - 2 * startIdx);
+    float stateHeight = getHeight() / static_cast<double> (Ny - 2 * startIdx);
+    int scaling = Global::outputScaling * 100.0;
+    
+    for (int x = startIdx; x < Nx; ++x)
     {
-        for (int y = 2; y < Ny - 2; ++y)
+        for (int y = startIdx; y < Ny; ++y)
         {
+#ifdef CREATECCODE
+            int cVal = Global::clamp (255 * 0.5 * (u[1][x + Nx * y] * scaling + 1), 0, 255);
+#else
             int cVal = Global::clamp (255 * 0.5 * (u[1][x][y] * scaling + 1), 0, 255);
+#endif
             g.setColour (Colour::fromRGB (cVal, cVal, cVal));
-            g.fillRect ((x - 2) * stateWidth, (y - 2) * stateHeight, stateWidth, stateHeight);
+            g.fillRect ((x - startIdx) * stateWidth, (y - startIdx) * stateHeight, stateWidth, stateHeight);
         }
     }
     
@@ -103,6 +129,9 @@ void Body::resized()
 
 void Body::calculateUpdateEq()
 {
+#ifdef CREATECCODE
+    updateEq (u[0], u[1], u[2], &coefficients[0], Nx);
+#else
     for (int l = 2; l < Nx - 2; l++)
     {
         for (int m = 2; m < Ny - 2; m++)
@@ -115,11 +144,17 @@ void Body::calculateUpdateEq()
                         + A6 * (u[2][l][m + 1] + u[2][l][m - 1] + u[2][l + 1][m] + u[2][l - 1][m]);
         }
     }
+#endif
 }
 
 void Body::updateStates()
 {
+#ifdef CREATECCODE
+    double* uTmp = u[2];
+#else
     std::vector<double>* uTmp = u[2];
+#endif
+    
     u[2] = u[1];
     u[1] = u[0];
     u[0] = uTmp;
@@ -145,15 +180,25 @@ void Body::excite()
     
     if (Global::debug)
     {
+#ifdef CREATECCODE
+        u[1][5 + Nx * 5] += 1;
+        u[2][5 + Nx * 5] += 1;
+#else
         u[1][5][5] += 1;
         u[2][5][5] += 1;
+#endif
     } else {
         for (int i = 1; i < excitationWidth; ++i)
         {
             for (int j = 1; j < excitationWidth; ++j)
             {
+#ifdef CREATECCODE
+                u[1][i + startIdX + (j + startIdY) * Nx] += excitationArea[i][j];
+                u[2][i + startIdX + (j + startIdY) * Nx] += excitationArea[i][j];
+#else
                 u[1][i + startIdX][j + startIdY] += excitationArea[i][j];
                 u[2][i + startIdX][j + startIdY] += excitationArea[i][j];
+#endif
             }
         }
     }
@@ -167,3 +212,61 @@ void Body::mouseDrag (const MouseEvent& e)
     idX = Nx * (e.x / static_cast<float> (getWidth()));
     idY = Ny * (e.y / static_cast<float> (getHeight()));
 }
+
+#ifdef CREATECCODE
+
+void Body::updateEqGenerator()
+{
+    void *handle;
+    char *error;
+    std::hash<int64> hasher;
+    auto newName = hasher (juce::Time::getCurrentTime().toMilliseconds());
+    
+    // convert updateEqString to char
+    String forloop =
+    "for (int l = 2; l < " + String(Nx - 2) + "; ++l)\n"
+    "{\n"
+        "for (int m = 2; m < " + String(Ny - 2) + "; ++m)\n"
+        "{\n"
+            "uNext[l+m * Nx] = coeffs[0] * u[l+m * Nx]"
+            "+ coeffs[1] * (u[l + (m+1) * Nx] + u[l + (m-1) * Nx] + u[l+1 + m * Nx] + u[l-1 + m * Nx] )\n"
+            "+ coeffs[2] * (u[l+1 + (m+1) * Nx] + u[l-1 + (m+1) * Nx] + u[l+1 + (m-1) * Nx] + u[l-1 + (m-1) * Nx])\n"
+            "+ coeffs[3] * (u[l + (m+2) * Nx] + u[l + (m-2) * Nx] + u[l+2 + m * Nx] + u[l-2 + m * Nx])\n"
+            "+ coeffs[4] * uPrev[l + m * Nx]\n"
+            "+ coeffs[5] * (uPrev[l + (m+1) * Nx] + uPrev[l + (m-1) * Nx] + uPrev[l+1 + m * Nx] + uPrev[l-1 + m * Nx]);\n"
+        "}\n"
+    "}";
+    const char* eq = toConstChar(forloop);
+    
+    FILE *fd= fopen("code.c", "w");
+    
+    fprintf(fd, "#include <stdio.h>\n"
+            "void updateEq(double* uNext, double* u, double* uPrev, double* coeffs, int Nx)\n"
+            "{\n"
+            "%s\n"
+            "}", eq);
+    fclose(fd);
+    
+    String systemInstr;
+    
+    systemInstr = String ("clang -shared -undefined dynamic_lookup -O3 -o " + String (newName) + ".so code.c -g");
+    system (toConstChar (systemInstr));
+    handle = dlopen (toConstChar (String (String (newName) + ".so")), RTLD_LAZY);
+   
+    if (!handle)
+    {
+        fprintf (stderr, "%s\n", dlerror());
+        exit(1);
+    }
+    
+    dlerror();    /* Clear any existing error */
+    
+    *(void **)(&updateEq) = dlsym (handle, "updateEq"); // second argument finds function name
+    
+    if ((error = dlerror()) != NULL)  {
+        fprintf (stderr, "%s\n", error);
+        exit(1);
+    }
+}
+#endif
+

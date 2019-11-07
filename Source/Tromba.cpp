@@ -83,26 +83,26 @@ Tromba::Tromba (NamedValueSet& parameters, double k)  : k (k),
     
     B1B = M / (k * k);
     B2B = R / (2.0 * k);
+    B3B = B1B + B2B;
     
-    A1B = 2.0 * B1B - M * w1 * w1;
-    A2B = -B1B + B2B;
-    
-    DB = 1.0 / (B1B + B2B);
-    
-    A1B *= DB;
-    A2B *= DB;
+    DB = 1.0 / (B3B);
     
     // Body
     hP = body->getGridSpacing();
     B1P = rhoP * H / (k * k);
     B2P = s0P / k;
-    DP = 1.0 / (B1P + B2P);
+    B3P = B1P + B2P;
+    DP = 1.0 / B3P;
+    oOhPSq = 1.0 / (hP * hP);
     
     // Variables for linear system solve
     a11 = B1S + B4S;
     a12 = 0.0;
     a21 = 0.0;
     a31 = 0.0;
+    
+    b21 = 0;
+    b31 = 0;
     
     // the rest changes every loop
     oOhS = 1.0 / hS;
@@ -119,8 +119,9 @@ Tromba::Tromba (NamedValueSet& parameters, double k)  : k (k),
     
     psiPrev = 0;
     
-    
-    
+    thetaS = hS * (rhoS * A + s0S * k);
+    thetaB = 4.0 * M + 2.0 * R * k;
+    kSq = k * k;
 }
 
 Tromba::~Tromba()
@@ -140,40 +141,39 @@ void Tromba::resized()
     body->setBounds(totArea);
 }
 
-void Tromba::calculateConnection()
-{
-    phiMinus = k * (K1 + 2 * K3 * etaSpring * etaSpring) - 4.0 * sx;
-    phiPlus = k * (K1 + 2 * K3 * etaSpring * etaSpring) + 4.0 * sx;
-    
-    varPsi = phiPlus * k * k * (4.0 * M + 2.0 * R * k + g * g * k * k + 4 * hS * (rhoS * A + s0S * k)) + 4.0 * k * (hS * (rhoS * A + s0S * k)) * (4.0 * M + 2.0 * R * k + g * g * k * k);
-    
-    if (phiPlus == 0)
-        FalphaTick = 0;
-    else // one division (SEE WHETHER SOME STUFF CAN BE PRECALCULATED HERE)
-    {
-        FalphaTick = (phiPlus * hS * (rhoS * A + s0S * k) * (4.0 * M + 2.0 * R * k + g * g * k * k)
-                      * ((4.0 * M + 2.0 * R * k + g * g * k * k) * (2.0 * k * K1 * etaSpring + phiMinus * etaSpringPrev + phiPlus * trombaString->getStateAt (0, cP))
-                      - phiPlus * ((4.0 * M + 2.0 * R * k) * bridge->getState (0) - g * g * k * k * etaColPrev + 4.0 * k * k * psiPrev * g)))
-                      / (varPsi * phiPlus * (4.0 * M + 2.0 * R * k + g * g * k * k));
-    }
-    
-//    trombaString->addToStateAt (cP, -FalphaTick / hS * DS);
-//    bridge->setState (A1B * bridge->getState (1) + A2B * bridge->getState (2) + FalphaTick * DB);
-    
-
-}
-
 void Tromba::calculateCollision()
 {
     g = 0;
     if (alph == 1)
     {
         if (etaCol > 0)
-            g = sqrt(K * (alph + 1.0) / 2.0);
+            g = sqrt(K * (alph + 1.0) * 0.5);
     } else {
         if (etaCol > 0) // subplus
-            g = sqrt(K * (alph + 1.0) / 2.0) * pow(etaCol, (alph - 1) * 0.5);
+            g = sqrt(K * (alph + 1.0) * 0.5) * pow(etaCol, (alph - 1) * 0.5);
     }
+}
+
+void Tromba::calculateConnection()
+{
+    //    double FalphaTickTest;
+    phiMinus = k * (K1 + 2 * K3 * etaSpring * etaSpring) - 4.0 * sx;
+    phiPlus = k * (K1 + 2 * K3 * etaSpring * etaSpring) + 4.0 * sx;
+    
+    gg = g * g;
+    ggKsq = g * g * kSq;
+    thetaBPlusggKsq = thetaB + ggKsq;
+    psiPrevg = psiPrev * g;
+    varPsi = (phiPlus * kSq * (thetaBPlusggKsq + 4.0 * thetaS) + 4.0 * k * thetaS * thetaBPlusggKsq);
+    
+    if (phiPlus == 0)
+        FalphaTick = 0;
+    else
+    {
+        FalphaTick = phiPlus * thetaS * thetaBPlusggKsq * (thetaBPlusggKsq * (2.0 * k * K1 * etaSpring + phiMinus * etaSpringPrev + phiPlus * trombaString->getStateAt(0, cP)) - phiPlus * (thetaB * bridge->getState(0) - ggKsq * etaColPrev + 4.0 * kSq * psiPrevg))
+        / (phiPlus * thetaBPlusggKsq * varPsi);
+    }
+    
 }
 
 void Tromba::solveSystem()
@@ -185,38 +185,41 @@ void Tromba::solveSystem()
      
     */
 
+    // Calculate plateterm
+    plateTerm = (phiPlus * thetaS * ggKsq) / (varPsi);
+    
     // find determinant
-    plateTerm = (phiPlus * hS * (rhoS * A + s0S * k) * (4.0 * M + 2.0 * R * k + g * g * k * k) * g * g * k * k) / (varPsi * (4.0 * M + 2.0 * R * k + g * g * k * k));
     a13 = -plateTerm * oOhS;
-    a22 = M / (k * k) + R / (2.0 * k) + g * g / 4.0;
-    a23 = plateTerm - g * g / 4.0;
-    a32 =  -g * g / (4.0 * hP * hP);
-    a33 = rhoP * H / (k * k) + s0P / k + g * g / (4.0 * hP * hP);
+    a22 = B3B + gg * 0.25;
+    a23 = plateTerm - gg * 0.25;
+    a32 =  -gg * oOhPSq * 0.25;
+    a33 = B3P + gg * oOhPSq * 0.25;
     oOdet = 1.0 / (a11 * (a22 * a33 - a23 * a32));
     
+    // Create adjoint matrix
     b11 = (a22 * a33 - a32 * a23) * oOdet;
     b12 = -(-a32 * a13) * oOdet;
     b13 = -a22 * a13 * oOdet;
-    b21 = 0; // doesn't have to be assigned every time
+//    b21 = 0; // doesn't have to be assigned every time
     b22 = a11 * a33 * oOdet;
     b23 = -(a11 * a23) * oOdet;
-    b31 = 0; // doesn't have to be assigned every time
+//    b31 = 0; // doesn't have to be assigned every time
     b32 = -(a11 * a32) * oOdet;
     b33 = a11 * a22 * oOdet;
     
-    c1 = trombaString->getStateAt (0, cP) * (B1S + B4S) - FalphaTick / hS;
-    c2 = bridge->getState(0) * (B1B + B2B) - g * g / 4.0 * etaColPrev + psiPrev * g + FalphaTick;
-    c3 = body->getStateAt (0, cPX, cPY) * (B1P + B2P) + (g * g / 4.0 * etaColPrev - psiPrev * g) / (hP * hP);
+    c1 = trombaString->getStateAt (0, cP) * (B1S + B4S) - FalphaTick * oOhS;
+    c2 = bridge->getState(0) * B3B - gg * 0.25 * etaColPrev + psiPrevg + FalphaTick;
+    c3 = body->getStateAt (0, cPX, cPY) * B3P + (gg * 0.25 * etaColPrev - psiPrevg) * oOhPSq;
 
     solut1 = b11 * c1 + b12 * c2 + b13 * c3;
-    solut2 = b21 * c1 + b22 * c2 + b23 * c3;
-    solut3 = b31 * c1 + b32 * c2 + b33 * c3;
+    solut2 = b22 * c2 + b23 * c3; // b21 is always 0
+    solut3 = b32 * c2 + b33 * c3; // b31 is always 0
     bridge->setState (solut2);
     Falpha = FalphaTick - plateTerm * solut3;
     etaColNext = solut3 - solut2;
-    trombaString->addToStateAt (cP, -Falpha / hS * DS);
+    trombaString->addToStateAt (cP, -Falpha * oOhS * DS);
 
-    body->addToStateAt (cPX, cPY, -1.0 / (hP * hP) * (g * g / 4.0 * (etaColNext - etaColPrev) + psiPrev * g) * DP);
+    body->addToStateAt (cPX, cPY, -oOhPSq * (gg * 0.25 * (etaColNext - etaColPrev) + psiPrevg) * DP);
     bridge->setState (solut2);
     psi = psiPrev + 0.5 * g * (etaColNext - etaColPrev);
 }

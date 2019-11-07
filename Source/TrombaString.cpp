@@ -36,7 +36,7 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
     
     N = floor (1.0 / h);
     h = 1.0 / N;
-    
+    std::cout << "String numpoints: " << N << std::endl;
     // initialise state vectors
     uVecs.reserve (3);
     
@@ -92,7 +92,7 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
     if (Global::debug)
     {
         bp = _bowPos.load();
-        setBowingParameters (0.0, 0.0);
+        setBowingParameters (0.0, 0.0, 0.05, 0.2, true);
     }
 }
 
@@ -113,6 +113,19 @@ void TrombaString::paint (Graphics& g)
     g.setColour (Colours::cyan);
     Path stringPath = visualiseState();
     g.strokePath (stringPath, PathStrokeType(2.0f));
+    g.setColour (Colours::yellow);
+    g.drawEllipse(_dampingFingerPos.load() * getWidth(), getHeight() / 2.0, 2, 2, 5);
+    g.setColour(Colours::yellow);
+    double opa = _Fb.load() * 10.0;
+    if (opa >= 1.0)
+    {
+        g.setOpacity(1.0);
+    }
+    else
+    {
+        g.setOpacity(opa);
+    }
+    g.fillRect(xPos - 5, yPos - getHeight() * 0.25, 10, getHeight() * 0.5);
 }
 
 void TrombaString::resized()
@@ -122,7 +135,7 @@ void TrombaString::resized()
 
 Path TrombaString::visualiseState()
 {
-    int visualScaling = Global::outputScaling * 1000;
+    int visualScaling = Global::outputScaling * 100;
     
     auto stringBounds = getHeight() / 2.0;
     Path stringPath;
@@ -133,7 +146,7 @@ Path TrombaString::visualiseState()
     
     for (int y = 1; y < N; y++)
     {
-        float newY = -u[1][y] * visualScaling + stringBounds; // POSIT
+        float newY = -u[1][y] * visualScaling + stringBounds; // Needs to be -u, because a positive u would visually go down
         
         if (isnan(x) || isinf(abs(x) || isnan(newY) || isinf(abs(newY))))
         {
@@ -169,9 +182,16 @@ void TrombaString::calculateUpdateEq()
         alpha = _bowPos.load() - bp;
         NRbow();
         excitation = E1 * Fb * q * exp (-a * q * q);
-        Global::extrapolation(u[0], bp, alpha, -excitation);
+        Global::extrapolation (u[0], bp, alpha, -excitation);
     }
     
+}
+
+void TrombaString::dampingFinger()
+{
+    float dampLoc = _dampingFingerPos.load() * N;
+    double uVal = Global::interpolation(u[0], floor(dampLoc), dampLoc - floor(dampLoc));
+    Global::extrapolation (u[0], floor(dampLoc), dampLoc - floor(dampLoc), -(uVal - uVal * 0.96));
 }
 
 void TrombaString::updateStates()
@@ -226,12 +246,6 @@ void TrombaString::NRbow()
     // NR loop
     while (eps > tol && NRiterator < 100)
     {
-//        q = qPrev - (Fb * BM * qPrev * exp (-a * qPrev * qPrev) + 2.0 * qPrev / k + 2.0 * s0 * qPrev + b) / (Fb * BM * (1.0 - 2.0 * a * qPrev * qPrev) * exp (-a * qPrev * qPrev) + 2.0 / k + 2.0 * s0);
-        
-        // working
-//        q = qPrev - (Fb * BM * qPrev * exp (-a * qPrev * qPrev) + 2.0 * qPrev / k + 2.0 * s0 * qPrev + b) /
-//        (Fb * BM * (1.0 - 2.0 * a * qPrev * qPrev) * exp (-a * qPrev * qPrev) + 2.0 / k + 2.0 * s0);
-        
         q = qPrev - (Fb * BM * qPrev * exp (-a * qPrev * qPrev) + 2.0 * qPrev / k + 2.0 * s0 * qPrev + b) /
                 (Fb * BM * (1.0 - 2.0 * a * qPrev * qPrev) * exp (-a * qPrev * qPrev) + 2.0 / k + 2.0 * s0);
         eps = std::abs (q - qPrev);
@@ -259,7 +273,7 @@ void TrombaString::mouseDrag (const MouseEvent& e)
     if (!bowing)
         return;
     
-    setBowingParameters (e.x, e.y);
+    setBowingParameters (e.x, e.y, 0.05, 0.2, true);
 }
 
 void TrombaString::mouseUp (const MouseEvent& e)
@@ -267,14 +281,14 @@ void TrombaString::mouseUp (const MouseEvent& e)
     bowFlag = false;
 }
 
-void TrombaString::setBowingParameters (int x, int y)
+void TrombaString::setBowingParameters (float x, float y, double Fb, double Vb, bool mouseInteraction)
 {
-    xPos = x;
-    yPos = y;
+    xPos = x * (mouseInteraction ? 1 : getWidth());
+    yPos = y * (mouseInteraction ? 1 : getHeight());
     bowFlag = true;
     
-    _Vb.store (Global::debug ? -0.2 : (yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
-    _Fb.store (0.05);
+    _Vb.store (Global::debug || !mouseInteraction ? Vb : (yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
+    _Fb.store (Fb);
     
     int loc = Global::debug ? bp : floor (N * static_cast<float> (xPos) / static_cast<float> (getWidth()));
     _bowPos.store (Global::clamp (loc, 3, N - 5)); // check whether these values are correct!!);

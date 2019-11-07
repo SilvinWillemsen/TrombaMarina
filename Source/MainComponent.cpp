@@ -31,14 +31,33 @@ MainComponent::MainComponent()
 MainComponent::~MainComponent()
 {
     // This shuts down the audio device and clears the audio source.
+    Timer::stopTimer();
+    HighResolutionTimer::stopTimer();
+    
+    for (auto sensel : sensels)
+    {
+        if (sensel->senselDetected)
+        {
+            sensel->shutDown();
+        }
+    }
+    
     shutdownAudio();
+    system("rm *.so");
+    system("rm -rf *.so.dSYM");
 }
 
 //==============================================================================
 void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRate)
 {
-//    if (Global::debug)
-//    {
+    for (int i = 0; i < amountOfSensels; ++i)
+    {
+        sensels.add (new Sensel (i)); // chooses the device in the sensel device list
+        std::cout << "Sensel added" << std::endl;
+    }
+    
+    if (Global::debug)
+    {
         continueButton = std::make_unique<TextButton>("ContinueButton");
         continueFlag.store (false);
         continueButton->setButtonText ("Continue");
@@ -55,7 +74,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
 //        currentSampleLabel->setColour (Label::backgroundColourId, Colours::black);
         addAndMakeVisible (currentSampleLabel.get());
         
-//    }
+    }
     
     fs = sampleRate;
     
@@ -65,46 +84,46 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     
     // string
     double r = 0.0005;
-    double f0 = 100.0;
+    double f0 = 45.0;
     double rhoS = 7850.0;
     double A = r * r * double_Pi;
     double T = (f0 * f0 * 4.0) * rhoS * A;
-    
+    bridgeLocRatio = 0.9;
     parameters.set ("rhoS", rhoS);
     parameters.set ("r", r);
     parameters.set ("A", r * r * double_Pi);
     parameters.set ("T", T);
     parameters.set ("ES", 2e11);
     parameters.set ("Iner", r * r * r * r * double_Pi * 0.25);
-    parameters.set ("s0S", 0.1);
+    parameters.set ("s0S", 1);
     parameters.set ("s1S", 0.005);
     
     // bridge
     parameters.set ("M", 0.001);
-    parameters.set ("R", 0.1);
-    parameters.set ("w1", 2.0 * double_Pi * 1000.0);
+    parameters.set ("R", 1.0);
+    parameters.set ("w1", 2.0 * double_Pi * 500.0);
     parameters.set ("offset", 1e-6);
     
     // body
     parameters.set ("rhoP", 7850.0);
     parameters.set ("H", 0.001);
     parameters.set ("EP", 2e11);
-    parameters.set ("Lx", 0.5);
-    parameters.set ("Ly", 0.5);
+    parameters.set ("Lx", 1.5);
+    parameters.set ("Ly", 0.3);
     parameters.set ("s0P", 5);
     parameters.set ("s1P", 0.01);
+    parameters.set ("colRatioX", bridgeLocRatio);
+    parameters.set ("colRatioY", 0.5);
     
     // collision
-    parameters.set ("K", 5.0e10);
-    parameters.set ("alpha", 1.3);
-    parameters.set ("colRatioX", 0.5);
-    parameters.set ("colRatioY", 0.5);
+    parameters.set ("K", 5.0e12);
+    parameters.set ("alpha", 1.0);
     
     // connection
     parameters.set ("K1", 1e6);
     parameters.set ("K3", 100);
-    parameters.set ("sx", 0);
-    parameters.set ("connRatio", 0.2);
+    parameters.set ("sx", 1.0);
+    parameters.set ("connRatio", bridgeLocRatio);
     
     tromba = std::make_unique<Tromba> (parameters, k);
     addAndMakeVisible (tromba.get());
@@ -114,7 +133,15 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     body = tromba->getBody();
     
     setSize (800, 600);
-    Timer::startTimerHz (60);
+    Timer::startTimerHz (40);
+    
+    trombaString->setFingerPos (bridgeLocRatio * 0.5);
+    
+    // start the hi-res timer
+    if (sensels.size() != 0)
+        if (sensels[0]->senselDetected)
+            HighResolutionTimer::startTimer (1000.0 / 150.0); // 150 Hz
+    
 }
 
 void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFill)
@@ -153,6 +180,7 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
 ////                if (curSample ==)
 //                    continueFlag.store (false);
                 tromba->calculateUpdateEqs();
+                trombaString->dampingFinger();
                 tromba->calculateCollision();
                 tromba->calculateConnection();
                 tromba->solveSystem();
@@ -186,8 +214,8 @@ void MainComponent::resized()
 {
     if (tromba.get() != nullptr)
     {
-//        if (Global::debug)
-//        {
+        if (Global::debug)
+        {
             int margin = 5;
             Rectangle<int> totalArea = getLocalBounds();
             Rectangle<int> debugArea = totalArea.removeFromBottom (Global::debugButtonsHeight);
@@ -198,21 +226,72 @@ void MainComponent::resized()
             stateLabel->setBounds (debugArea.removeFromLeft (100));
             debugArea.removeFromRight (margin);
             currentSampleLabel->setBounds (debugArea.removeFromLeft (100));
-//        } else {
-//            tromba->setBounds (getLocalBounds());
-//        }
+        } else {
+            tromba->setBounds (getLocalBounds());
+        }
     }
 }
 
 void MainComponent::timerCallback()
 {
     repaint();
-//    if (Global::debug)
-//    {
-////        stateLabel->setText (String (body->getStateAt(1, 5, 5)), dontSendNotification);
-//////        stateLabel->setText (String (trombaString->getStateAt (1, floor (trombaString->getNumPoints() / 2.0))), dontSendNotification);
-////        currentSampleLabel->setText (String (curSample), dontSendNotification);
-//    }
+    if (Global::debug)
+    {
+        stateLabel->setText (String (body->getStateAt(1, 5, 5)), dontSendNotification);
+//        stateLabel->setText (String (trombaString->getStateAt (1, floor (trombaString->getNumPoints() / 2.0))), dontSendNotification);
+        currentSampleLabel->setText (String (curSample), dontSendNotification);
+    }
+}
+
+void MainComponent::hiResTimerCallback()
+{
+    double maxVb = 1;
+    double maxFb = 0.1;
+    for (auto sensel : sensels)
+    {
+        double finger0X = 0;
+        double finger0Y = 0;
+        if (sensel->senselDetected)
+        {
+            sensel->check();
+            unsigned int fingerCount = sensel->contactAmount;
+            int index = sensel->senselIndex;
+            for (int f = 0; f < fingerCount; f++)
+            {
+                bool state = sensel->fingers[f].state;
+                float x = sensel->fingers[f].x;
+                float y = sensel->fingers[f].y;
+                float Vb = -sensel->fingers[f].delta_y * 0.5;
+                float Fb = sensel->fingers[f].force;
+                int fingerID = sensel->fingers[f].fingerID;
+                trombaString->setFingerPos (0);
+                if (f == 0 && state) //fingerID == 0)
+                {
+                    finger0X = x;
+                    finger0Y = y;
+                    Vb = Global::clamp (Vb, -maxVb, maxVb);
+                    Fb = Global::clamp (Fb, 0, maxFb);
+                    trombaString->setBowingParameters (x, y, Fb, Vb, false);
+                }
+                else if (fingerID > 0)
+                {
+                    //                    float dist = sqrt ((finger0X - x) * (finger0X - x) + (finger0Y - y) * (finger0Y - y));
+                    float verDist = std::abs(finger0Y - y);
+                    float horDist = std::abs(finger0X - x);
+                    //                    std::cout << horDist << std::endl;
+                    if (!(verDist <= 0.3 && horDist < 0.05))
+                    {
+                        trombaString->setFingerPos (x);
+                    }
+                }
+            }
+            
+            if (fingerCount == 0)
+            {
+                trombaString->disableBowing();
+            }
+        }
+    }
 }
 
 void MainComponent::buttonClicked (Button* button)

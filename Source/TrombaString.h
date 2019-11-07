@@ -28,10 +28,12 @@ public:
     Path visualiseState();
     
     void calculateUpdateEq();
+    void dampingFinger();
     void updateStates();
 
     void excite();
     void NRbow();
+    void disableBowing() { bowFlag = false; };
     
     void mouseDown (const MouseEvent& e) override;
     void mouseDrag (const MouseEvent& e) override;
@@ -48,7 +50,9 @@ public:
     
     int getNumPoints() { return N; };
     
-    void setBowingParameters (int x, int y);
+    void setBowingParameters (float x, float y, double Fb, double Vb, bool mouseInteraction);
+    
+    void setFingerPos (double val) { _dampingFingerPos.store(val); };
     
     // debug getters
     int getBowPos() { return bp; };
@@ -91,5 +95,7 @@ private:
     double a, b, uI, uIPrev, uI1, uI2, uIM1, uIM2, uIPrev1, uIPrevM1, cOhSq, kOhhSq, BM, eps, tol, NRiterator, q, qPrev, excitation;
     
     double offset;
+    
+    std::atomic<double> _dampingFingerPos;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TrombaString)
 };

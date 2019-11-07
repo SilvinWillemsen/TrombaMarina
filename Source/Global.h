@@ -9,8 +9,8 @@
 */
 
 #pragma once
-
-#define NOINTERPOL
+#define CREATECCODE
+#define CUBICINTERPOL
 
 namespace Global
 {

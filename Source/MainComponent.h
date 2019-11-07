@@ -8,6 +8,7 @@
 
 #pragma once
 #include "../JuceLibraryCode/JuceHeader.h"
+#include "../SenselWrapper/SenselWrapper.h"
 #include "Tromba.h"
 
 //==============================================================================
@@ -15,7 +16,7 @@
     This component lives inside our window, and this is where you should put all
     your controls and content.
 */
-class MainComponent   : public AudioAppComponent, public Timer, public Button::Listener
+class MainComponent   : public AudioAppComponent, public Timer, public Button::Listener, public HighResolutionTimer
 {
 public:
     //==============================================================================
@@ -32,6 +33,7 @@ public:
     void resized() override;
     
     void timerCallback() override;
+    void hiResTimerCallback() override;
     
     void buttonClicked (Button* button) override;
 
@@ -50,5 +52,11 @@ private:
     std::atomic<bool> continueFlag;
     
     unsigned long curSample = 1; // first sample is index 1 (like Matlab)
+    double bridgeLocRatio;
+    
+    // Sensel Stuff
+    OwnedArray<Sensel> sensels;
+    int amountOfSensels = 1;
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

@@ -28,8 +28,8 @@ public:
     void paint (Graphics&) override;
     void resized() override;
     
-    void calculateConnection();
     void calculateCollision();
+    void calculateConnection();
     void solveSystem();
     void calculateUpdateEqs();
     void updateStates();
@@ -55,11 +55,11 @@ public:
         };
     };
     
-    void setCurSample (int curSamp) { curSample = curSamp; };
+    void setCurSample (unsigned long curSamp) { curSample = curSamp; };
     
 private:
     
-    double k; 
+    double k, kSq; 
     // Instrument components (String, body and bridge)
     std::shared_ptr<TrombaString> trombaString;
     std::shared_ptr<Bridge> bridge;
@@ -75,18 +75,19 @@ private:
     double rhoP, H, E, hP, s0P, s1P;
 
     // Collision variables
-    double K, alph, g, etaColNext, etaCol, etaColPrev, psi, psiPrev, plateTerm = 0;
+    double K, alph, g, etaColNext, etaCol, etaColPrev, psi, psiPrev, plateTerm, psiPrevg;
     double colRatioX, colRatioY;
     int cPX, cPY;
     
     // Connection variables
     double K1, K3, sx, etaSpring, etaSpringPrev, connRatio, phiMinus, phiPlus, varPsi, FalphaTick, Falpha;
+    double thetaS, thetaB, gg, ggKsq, thetaBPlusggKsq;
     int cP;
     
     // Connection calculation coefficients
     double A1S, A2S, A3S, A4S, A5S, B1S, B2S, B3S, B4S, B5S, DS;
-    double A1B, A2B, B1B, B2B, DB;
-    double B1P, B2P, DP;
+    double B1B, B2B, B3B, DB;
+    double B1P, B2P, B3P, DP;
     
     // Variables for doing the linear system solve
     double a11, a12, a13, a21, a22, a23, a31, a32, a33;
@@ -95,8 +96,8 @@ private:
     double solut1, solut2, solut3;
     
     double oOdet;
-    double oOhS, oOFourhPSq;
+    double oOhS, oOFourhPSq, oOhPSq;
     
-    int curSample;
+    unsigned long curSample;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Tromba)
 };

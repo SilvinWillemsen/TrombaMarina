@@ -2,6 +2,32 @@
 
 <JUCERPROJECT id="jVZ0OI" name="TrombaMarina" projectType="guiapp" jucerVersion="5.4.4">
   <MAINGROUP id="i73KR5" name="TrombaMarina">
+    <GROUP id="{1C1F534B-3670-5891-DA37-A4399252B655}" name="SenselWrapper">
+      <GROUP id="{F4A204D8-C4D3-C920-1A44-81EEC3C59B96}" name="lib">
+        <FILE id="rOsDLY" name="sensel.c" compile="1" resource="0" file="SenselWrapper/lib/sensel.c"/>
+        <FILE id="TM6zyw" name="sensel.h" compile="0" resource="0" file="SenselWrapper/lib/sensel.h"/>
+        <FILE id="uHX41g" name="sensel_device.h" compile="0" resource="0" file="SenselWrapper/lib/sensel_device.h"/>
+        <FILE id="GPvmC0" name="sensel_device_vidpid.h" compile="0" resource="0"
+              file="SenselWrapper/lib/sensel_device_vidpid.h"/>
+        <FILE id="mJ6uDH" name="sensel_protocol.h" compile="0" resource="0"
+              file="SenselWrapper/lib/sensel_protocol.h"/>
+        <FILE id="j4aUSr" name="sensel_register.c" compile="1" resource="0"
+              file="SenselWrapper/lib/sensel_register.c"/>
+        <FILE id="ZMMECu" name="sensel_register.h" compile="0" resource="0"
+              file="SenselWrapper/lib/sensel_register.h"/>
+        <FILE id="CcEfxC" name="sensel_register_map.h" compile="0" resource="0"
+              file="SenselWrapper/lib/sensel_register_map.h"/>
+        <FILE id="RMKCgb" name="sensel_serial.h" compile="0" resource="0" file="SenselWrapper/lib/sensel_serial.h"/>
+        <FILE id="xRyGjq" name="sensel_serial_linux.c" compile="1" resource="0"
+              file="SenselWrapper/lib/sensel_serial_linux.c"/>
+        <FILE id="RBQWLB" name="sensel_serial_win.c" compile="1" resource="0"
+              file="SenselWrapper/lib/sensel_serial_win.c"/>
+        <FILE id="MhUeeE" name="sensel_types.h" compile="0" resource="0" file="SenselWrapper/lib/sensel_types.h"/>
+      </GROUP>
+      <FILE id="z8acpH" name="LICENSE" compile="0" resource="1" file="SenselWrapper/LICENSE"/>
+      <FILE id="hsB5Tg" name="README.md" compile="0" resource="1" file="SenselWrapper/README.md"/>
+      <FILE id="ediTUH" name="SenselWrapper.h" compile="0" resource="0" file="SenselWrapper/SenselWrapper.h"/>
+    </GROUP>
     <GROUP id="{AE08F05C-9F4C-1ABA-72C5-D69FBB6B7B8F}" name="Source">
       <FILE id="esJ2kZ" name="Global.h" compile="0" resource="0" file="Source/Global.h"/>
       <FILE id="ZMpHKO" name="TrombaString.cpp" compile="1" resource="0"
