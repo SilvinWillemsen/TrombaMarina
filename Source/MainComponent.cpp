@@ -24,7 +24,7 @@ MainComponent::MainComponent()
     else
     {
         // Specify the number of input and output channels that we want to open
-        setAudioChannels (2, 2);
+        setAudioChannels (0, 2);
     }
 }
 
@@ -43,8 +43,6 @@ MainComponent::~MainComponent()
     }
     
     shutdownAudio();
-    system("rm *.so");
-    system("rm -rf *.so.dSYM");
 }
 
 //==============================================================================
@@ -66,12 +64,10 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         
         stateLabel = std::make_unique<Label>("StateLabel");
         stateLabel->setColour (Label::textColourId, Colours::white);
-//        stateLabel->setColour (Label::backgroundColourId, Colours::black);
         addAndMakeVisible (stateLabel.get());
         
         currentSampleLabel = std::make_unique<Label>("CurrentSampleLabel");
         currentSampleLabel->setColour (Label::textColourId, Colours::white);
-//        currentSampleLabel->setColour (Label::backgroundColourId, Colours::black);
         addAndMakeVisible (currentSampleLabel.get());
         
     }
