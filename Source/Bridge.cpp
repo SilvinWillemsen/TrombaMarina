@@ -52,9 +52,13 @@ void Bridge::paint (Graphics& g)
        You should replace everything in this method with your own
        drawing code..
     */
+    int visualScaling = Global::outputScaling * 1000.0;
     g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));   // clear the background
-    g.setColour(Colours::cyan);
-    g.drawEllipse (getWidth() * 0.5, -u[1][0] * Global::outputScaling * 1000.0 + getHeight() * 0.5, 5.0, 5.0, 5.0);
+    g.setColour(Colours::lawngreen);
+    g.drawEllipse (getWidth() * 0.5 - 3, -u[1][0] * visualScaling + getHeight() * 0.5 - 8, 6.0, 6.0, 4.0);
+    int cVal = Global::clamp (255 * 0.5 * (bodyState * visualScaling * 0.1 + 1), 0, 255);
+    g.setColour (Colour::fromRGB (cVal, cVal, cVal));
+    g.fillRect (getWidth() * 0.2, getHeight() * 0.5 - visualScaling * bodyState, 0.6 * getWidth(), 5);
 }
 
 void Bridge::resized()
@@ -79,8 +83,8 @@ void Bridge::updateStates()
 
 void Bridge::excite()
 {
-    u[1][0] += 1.0 / (Global::outputScaling * 10.0);
-    u[2][0] += 1.0 / (Global::outputScaling * 10.0);
+    u[1][0] += 1.0 / (Global::outputScaling * 100.0);
+    u[2][0] += 1.0 / (Global::outputScaling * 100.0);
 }
 
 void Bridge::mouseDown (const MouseEvent& e)

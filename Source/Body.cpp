@@ -43,20 +43,11 @@ Body::Body (NamedValueSet& parameters, double k) :  k (k),
     // initialise state vectors
     uVecs.reserve (3);
     
-#ifdef CREATECCODE
     for (int i = 0; i < 3; ++i)
         uVecs.push_back (std::vector<double> (N, 0));
     u.resize (3);
     for (int i = 0; i < u.size(); ++i)
         u[i] = &uVecs[i][0];
-#else
-    for (int i = 0; i < 3; ++i)
-        uVecs.push_back (std::vector<std::vector<double>> (Nx, std::vector<double> (Ny, 0)));
-    
-    u.resize (3);
-    for (int i = 0; i < u.size(); ++i)
-        u[i] = &uVecs[i][0];
-#endif
 
     
     D = 1.0f / (1.0f + s0 * k);
@@ -78,21 +69,6 @@ Body::Body (NamedValueSet& parameters, double k) :  k (k),
     A6 *= D;
     
     excitationWidth = floor (std::min(Nx, Ny) * 0.2);
-    
-#ifdef CREATECCODE
-    coefficients.reserve(6);
-    coefficients.push_back (A1);
-    coefficients.push_back (A2);
-    coefficients.push_back (A3);
-    coefficients.push_back (A4);
-    coefficients.push_back (A5);
-    coefficients.push_back (A6);
-    
-    contLabel = std::make_unique<Label>("Label");
-    contLabel->setText(String (cont), dontSendNotification);
-    addAndMakeVisible (contLabel.get());
-#endif
-    
 }
 
 Body::~Body()
@@ -110,60 +86,54 @@ void Body::paint (Graphics& g)
     {
         for (int y = startIdx; y < Ny; ++y)
         {
-#ifdef CREATECCODE
             int cVal = Global::clamp (255 * 0.5 * (u[1][x + Nx * y] * scaling + 1), 0, 255);
-#else
-            int cVal = Global::clamp (255 * 0.5 * (u[1][x][y] * scaling + 1), 0, 255);
-#endif
             g.setColour (Colour::fromRGB (cVal, cVal, cVal));
             g.fillRect ((x - startIdx) * stateWidth, (y - startIdx) * stateHeight, stateWidth, stateHeight);
         }
     }
     g.setColour (Colours::yellow);
-//    g.drawText(String(cont), 0, 0, 100, 100, Justification::centred);
-#ifdef CREATECCODE
-    const void* address = static_cast<const void*>(handle);
-    std::stringstream ss;
-    ss << address;
-    std::string name = ss.str();
-    g.drawText(String(name), 0, 0, 100, 100, Justification::centred);
-#endif
 }
 
 void Body::resized()
 {
     // This method is where you should set the bounds of any child
     // components that your component contains..
-//    contLabel->setBounds(0, 0, 100, 100);
+
 }
 
 void Body::calculateUpdateEq()
 {
-#ifdef CREATECCODE
-    updateEq (u[0], u[1], u[2], &coefficients[0], Nx);
-#else
-    for (int l = 2; l < Nx - 2; l++)
+    for (int l = 2; l < Nx - 2; ++l)
     {
-        for (int m = 2; m < Ny - 2; m++)
+        for (int m = 2; m < Ny - 2; ++m)
         {
-            u[0][l][m] = A1 * u[1][l][m]
-                        + A2 * (u[1][l][m + 1] + u[1][l][m - 1] + u[1][l + 1][m] + u[1][l - 1][m])
-                        + A3 * (u[1][l + 1][m + 1] + u[1][l - 1][m + 1] + u[1][l + 1][m - 1] + u[1][l - 1][m - 1])
-                        + A4 * (u[1][l][m + 2] + u[1][l][m - 2] + u[1][l + 2][m] + u[1][l - 2][m])
-                        + A5 * u[2][l][m]
-                        + A6 * (u[2][l][m + 1] + u[2][l][m - 1] + u[2][l + 1][m] + u[2][l - 1][m]);
+            u[0][l+m * Nx] =
+            A1 * u[1][l+m * Nx]
+            + A2 * (u[1][l + (m+1) * Nx] + u[1][l + (m-1) * Nx] + u[1][l+1 + m * Nx] + u[1][l-1 + m * Nx] )
+            + A3 * (u[1][l+1 + (m+1) * Nx] + u[1][l-1 + (m+1) * Nx] + u[1][l+1 + (m-1) * Nx] + u[1][l-1 + (m-1) * Nx])
+            + A4 * (u[1][l + (m+2) * Nx] + u[1][l + (m-2) * Nx] + u[1][l+2 + m * Nx] + u[1][l-2 + m * Nx])
+            + A5 * u[2][l + m * Nx]
+            + A6 * (u[2][l + (m+1) * Nx] + u[2][l + (m-1) * Nx] + u[2][l+1 + m * Nx] + u[2][l-1 + m * Nx]);
         }
     }
-#endif
 }
+
+//    for (int l = 2; l < Nx - 2; l++)
+//    {
+//        for (int m = 2; m < Ny - 2; m++)
+//        {
+//            u[0][l][m] = A1 * u[1][l][m]
+//                        + A2 * (u[1][l][m + 1] + u[1][l][m - 1] + u[1][l + 1][m] + u[1][l - 1][m])
+//                        + A3 * (u[1][l + 1][m + 1] + u[1][l - 1][m + 1] + u[1][l + 1][m - 1] + u[1][l - 1][m - 1])
+//                        + A4 * (u[1][l][m + 2] + u[1][l][m - 2] + u[1][l + 2][m] + u[1][l - 2][m])
+//                        + A5 * u[2][l][m]
+//                        + A6 * (u[2][l][m + 1] + u[2][l][m - 1] + u[2][l + 1][m] + u[2][l - 1][m]);
+//        }
+//    }
 
 void Body::updateStates()
 {
-#ifdef CREATECCODE
-    double* uTmp = u[2];
-#else
-    std::vector<double>* uTmp = u[2];
-#endif
+    uTmp = u[2];
     
     u[2] = u[1];
     u[1] = u[0];
@@ -190,25 +160,15 @@ void Body::excite()
     
     if (Global::debug)
     {
-#ifdef CREATECCODE
         u[1][5 + Nx * 5] += 1;
         u[2][5 + Nx * 5] += 1;
-#else
-        u[1][5][5] += 1;
-        u[2][5][5] += 1;
-#endif
     } else {
         for (int i = 1; i < excitationWidth; ++i)
         {
             for (int j = 1; j < excitationWidth; ++j)
             {
-#ifdef CREATECCODE
                 u[1][i + startIdX + (j + startIdY) * Nx] += excitationArea[i][j];
                 u[2][i + startIdX + (j + startIdY) * Nx] += excitationArea[i][j];
-#else
-                u[1][i + startIdX][j + startIdY] += excitationArea[i][j];
-                u[2][i + startIdX][j + startIdY] += excitationArea[i][j];
-#endif
             }
         }
     }
@@ -222,75 +182,3 @@ void Body::mouseDrag (const MouseEvent& e)
     idX = Nx * (e.x / static_cast<float> (getWidth()));
     idY = Ny * (e.y / static_cast<float> (getHeight()));
 }
-
-#ifdef CREATECCODE
-
-void Body::updateEqGenerator1()
-{
-    size_t sizeTest = 1000;
-    char test[sizeTest];
-    
-    std::cout << String(getcwd(test, sizeTest)) << std::endl;
-    curTime = juce::Time::getCurrentTime().toMilliseconds();
-    newName = hasher (curTime);
-
-    // convert updateEqString to char
-    forloop =
-    "for (int l = 2; l < " + String(Nx - 2) + "; ++l)\n"
-    "{\n"
-        "for (int m = 2; m < " + String(Ny - 2) + "; ++m)\n"
-        "{\n"
-            "uNext[l+m * Nx] = coeffs[0] * u[l+m * Nx]"
-            "+ coeffs[1] * (u[l + (m+1) * Nx] + u[l + (m-1) * Nx] + u[l+1 + m * Nx] + u[l-1 + m * Nx] )\n"
-            "+ coeffs[2] * (u[l+1 + (m+1) * Nx] + u[l-1 + (m+1) * Nx] + u[l+1 + (m-1) * Nx] + u[l-1 + (m-1) * Nx])\n"
-            "+ coeffs[3] * (u[l + (m+2) * Nx] + u[l + (m-2) * Nx] + u[l+2 + m * Nx] + u[l-2 + m * Nx])\n"
-            "+ coeffs[4] * uPrev[l + m * Nx]\n"
-            "+ coeffs[5] * (uPrev[l + (m+1) * Nx] + uPrev[l + (m-1) * Nx] + uPrev[l+1 + m * Nx] + uPrev[l-1 + m * Nx]);\n"
-        "}\n"
-    "}";
-    eq = toConstChar(forloop);
-    fd = fopen("./code.c", "w");
-    if (fd == NULL)
-    {
-        cont = 10;
-        return;
-//        fprintf(stderr, "Could not open '%s' for writing: %s\n", "code.c", strerror(errno));
-    } else {
-        fprintf(fd, "#include <stdio.h>\n"
-                "void updateEq(double* uNext, double* u, double* uPrev, double* coeffs, int Nx)\n"
-                "{\n"
-                "%s\n"
-                "}", eq);
-    }
-    ++cont;
-}
-void Body::updateEqGenerator2()
-{
-    fclose(fd);
-    systemInstr = String ("./clang -shared -undefined dynamic_lookup -O3 -o generated.so code.c -g");
-    system (toConstChar (systemInstr));
-    handle = dlopen ("generated.so", RTLD_LAZY);
-    if (!handle)
-    {
-        fprintf (stderr, "%s\n", dlerror());
-        exit(1);
-    }
-    ++cont;
-}
-
-void Body::updateEqGenerator3()
-{
-    
-    dlerror();    /* Clear any existing error */
-    
-    *(void **)(&updateEq) = dlsym (handle, "updateEq"); //dlsym (handle, "updateEq"); // second argument finds function name
-    
-    if ((error = dlerror()) != NULL)  {
-        fprintf (stderr, "%s\n", error);
-        exit(1);
-    }
-    doneCreatingCCode = true;
-    ++cont;
-}
-#endif
-

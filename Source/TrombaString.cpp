@@ -20,7 +20,8 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
                                                                     Iner (*parameters.getVarPointer("Iner")),
                                                                     s0 (*parameters.getVarPointer("s0S")),
                                                                     s1 (*parameters.getVarPointer("s1S")),
-                                                                    offset (*parameters.getVarPointer("offset"))
+                                                                    offset (*parameters.getVarPointer("offset")),
+                                                                    connRatio (*parameters.getVarPointer("connRatio"))
 {
     
     // calculate wave speed and stiffness coefficient
@@ -94,6 +95,8 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
         bp = _bowPos.load();
         setBowingParameters (0.0, 0.0, 0.05, 0.2, true);
     }
+    
+    connPos = floor(connRatio * N);
 }
 
 TrombaString::~TrombaString()
@@ -111,11 +114,11 @@ void TrombaString::paint (Graphics& g)
 
     g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));   // clear the background
     g.setColour (Colours::cyan);
-    Path stringPath = visualiseState();
+    int visualScaling = Global::outputScaling * 100;
+    Path stringPath = visualiseState (visualScaling);
     g.strokePath (stringPath, PathStrokeType(2.0f));
     g.setColour (Colours::yellow);
-    g.drawEllipse(_dampingFingerPos.load() * getWidth(), getHeight() / 2.0, 2, 2, 5);
-    g.setColour(Colours::yellow);
+    g.drawEllipse(_dampingFingerPos.load() * getWidth(), getHeight() * 0.5, 2, 2, 5);
     double opa = _Fb.load() * 10.0;
     if (opa >= 1.0)
     {
@@ -126,6 +129,9 @@ void TrombaString::paint (Graphics& g)
         g.setOpacity(opa);
     }
     g.fillRect(xPos - 5, yPos - getHeight() * 0.25, 10, getHeight() * 0.5);
+    
+    g.setColour (Colours::lawngreen);
+    g.drawEllipse (connPos * h * getWidth(), getHeight() * 0.5 - (bridgeState * visualScaling), 2, 2, 5);
 }
 
 void TrombaString::resized()
@@ -133,10 +139,8 @@ void TrombaString::resized()
 
 }
 
-Path TrombaString::visualiseState()
+Path TrombaString::visualiseState (int visualScaling)
 {
-    int visualScaling = Global::outputScaling * 100;
-    
     auto stringBounds = getHeight() / 2.0;
     Path stringPath;
     stringPath.startNewSubPath (0, stringBounds - visualScaling * offset);
@@ -196,7 +200,7 @@ void TrombaString::dampingFinger()
 
 void TrombaString::updateStates()
 {
-    double* uTmp = u[2];
+    uTmp = u[2];
     u[2] = u[1];
     u[1] = u[0];
     u[0] = uTmp;
@@ -273,7 +277,10 @@ void TrombaString::mouseDrag (const MouseEvent& e)
     if (!bowing)
         return;
     
-    setBowingParameters (e.x, e.y, 0.05, 0.2, true);
+    if (ModifierKeys::getCurrentModifiers() == ModifierKeys::leftButtonModifier + ModifierKeys::ctrlModifier)
+        _dampingFingerPos.store (e.x / static_cast<float>(getWidth()));
+    else
+        setBowingParameters (e.x, e.y, 0.05, 0.2, true);
 }
 
 void TrombaString::mouseUp (const MouseEvent& e)

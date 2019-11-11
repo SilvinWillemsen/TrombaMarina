@@ -131,7 +131,10 @@ Tromba::~Tromba()
 void Tromba::paint (Graphics& g)
 {
     g.setColour (Colours::yellow);
+    trombaString->setBridgeState (bridge->getState (1));
+    bridge->setBodyState (body->getStateAt (1, cPX, cPY));
 }
+
 
 void Tromba::resized()
 {

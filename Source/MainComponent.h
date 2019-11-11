@@ -52,6 +52,7 @@ private:
     std::unique_ptr<Label> currentSampleLabel;
     std::atomic<bool> continueFlag;
     
+    double offset;
     unsigned long curSample = 1; // first sample is index 1 (like Matlab)
     
     // Create c code

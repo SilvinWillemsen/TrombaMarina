@@ -25,7 +25,8 @@ public:
     void paint (Graphics&) override;
     void resized() override;
     
-    Path visualiseState();
+    Path visualiseState (int visualScaling);
+    void setBridgeState (double val) { bridgeState = val; };
     
     void calculateUpdateEq();
     void dampingFinger();
@@ -78,6 +79,9 @@ private:
     // states
     std::vector<std::vector<double>> uVecs;
     
+    
+    double* uTmp;
+    
     // excitation variables
     int xPos, yPos;
 //    bool exciteFlag = Global::initialiseWithExcitation ? (Global::exciteString ? true : false) : false;
@@ -95,6 +99,9 @@ private:
     double a, b, uI, uIPrev, uI1, uI2, uIM1, uIM2, uIPrev1, uIPrevM1, cOhSq, kOhhSq, BM, eps, tol, NRiterator, q, qPrev, excitation;
     
     double offset;
+    double connRatio;
+    int connPos;
+    double bridgeState;
     
     std::atomic<double> _dampingFingerPos;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TrombaString)

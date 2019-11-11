@@ -35,6 +35,8 @@ public:
     
     void mouseDown (const MouseEvent& e) override;
     
+    void setBodyState (double state) { bodyState = state; };
+    
 private:
     double k;
     
@@ -47,6 +49,7 @@ private:
     double A1, A2, A3, B1, B2, D;
     
     double offset = 0;
+    double bodyState;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Bridge)
 };
