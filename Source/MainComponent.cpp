@@ -75,7 +75,15 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         addAndMakeVisible (currentSampleLabel.get());
         
     }
-    
+#ifdef CREATECCODE
+    continueFlag.store (false);
+    createCButton = std::make_unique<TextButton>("CreateCCode");
+    createCButton->setButtonText ("Create C Code");
+    addAndMakeVisible (createCButton.get());
+    createCButton->addListener (this);
+#else
+    continueFlag.store (true);
+#endif
     fs = sampleRate;
     
     double k = 1.0 / fs;
@@ -100,7 +108,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     
     // bridge
     parameters.set ("M", 0.001);
-    parameters.set ("R", 1.0);
+    parameters.set ("R", 0);
     parameters.set ("w1", 2.0 * double_Pi * 500.0);
     parameters.set ("offset", 1e-6);
     
@@ -175,8 +183,8 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
                 ++curSample;
             }
         } else {
-//            if (continueFlag.load() == true)
-//            {
+            if (continueFlag.load() == true)
+            {
 ////                if (curSample ==)
 //                    continueFlag.store (false);
                 tromba->calculateUpdateEqs();
@@ -185,7 +193,7 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
                 tromba->calculateConnection();
                 tromba->solveSystem();
                 tromba->updateStates();
-//            }
+            }
         }
         output = tromba->getOutput() * (Global::debug ? 1.0 : Global::outputScaling);
         channelData1[i] = Global::clamp(output, -1, 1);
@@ -206,7 +214,9 @@ void MainComponent::paint (Graphics& g)
 {
     // (Our component is opaque, so we must completely fill the background with a solid colour)
     g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));
-
+#ifdef CREATECCODE
+    createCButton->setButtonText (String(body->getCont()));
+#endif
     // You can add your drawing code here!
 }
 
@@ -214,10 +224,10 @@ void MainComponent::resized()
 {
     if (tromba.get() != nullptr)
     {
+        Rectangle<int> totalArea = getLocalBounds();
         if (Global::debug)
         {
             int margin = 5;
-            Rectangle<int> totalArea = getLocalBounds();
             Rectangle<int> debugArea = totalArea.removeFromBottom (Global::debugButtonsHeight);
             debugArea.reduce (margin, margin);
             tromba->setBounds (totalArea);
@@ -227,7 +237,10 @@ void MainComponent::resized()
             debugArea.removeFromRight (margin);
             currentSampleLabel->setBounds (debugArea.removeFromLeft (100));
         } else {
-            tromba->setBounds (getLocalBounds());
+            tromba->setBounds (totalArea.removeFromTop(getHeight() - Global::debugButtonsHeight));
+#ifdef CREATECCODE
+            createCButton->setBounds (totalArea);
+#endif
         }
     }
 }
@@ -241,6 +254,13 @@ void MainComponent::timerCallback()
 //        stateLabel->setText (String (trombaString->getStateAt (1, floor (trombaString->getNumPoints() / 2.0))), dontSendNotification);
         currentSampleLabel->setText (String (curSample), dontSendNotification);
     }
+    
+#ifdef CREATECCODE
+    if (body->isDoneCreatingCCode())
+    {
+        continueFlag.store (true);
+    }
+#endif
 }
 
 void MainComponent::hiResTimerCallback()
@@ -300,4 +320,21 @@ void MainComponent::buttonClicked (Button* button)
     {
         continueFlag.store (true);
     }
+#ifdef CREATECCODE
+    if (button == createCButton.get())
+    {
+        switch(body->getCont())
+        {
+            case 0:
+                body->updateEqGenerator1();
+                break;
+            case 1:
+                body->updateEqGenerator2();
+                break;
+            case 2:
+                body->updateEqGenerator3();
+                break;
+        }
+    }
+#endif
 }

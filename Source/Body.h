@@ -12,8 +12,12 @@
 
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "Global.h"
+//#include "../Source/code.c"
 #include <stdio.h>
 #include <dlfcn.h>
+#include <sstream> //for std::stringstream
+#include <string>  //for std::string
+
 
 //==============================================================================
 /*
@@ -69,8 +73,13 @@ public:
     double getGridSpacing() { return h; };
     
 #ifdef CREATECCODE
-    void updateEqGenerator();
+    void updateEqGenerator1();
+    void updateEqGenerator2();
+    void updateEqGenerator3();
     const char* toConstChar (String string) { return static_cast<const char*> (string.toUTF8()); }
+    bool isDoneCreatingCCode() { return doneCreatingCCode; };
+    void increaseCont() { ++cont; };
+    int getCont() { return cont; };
 #endif
 private:
     double k, h;
@@ -85,7 +94,6 @@ private:
     std::vector<std::vector<double>> uVecs;
     
     std::vector<double> coefficients;
-    void updateEqGenerator (String& eqString);
     void (*updateEq) (double* uNext, double* u, double* uPrev, double* parameters, int Nx);
     unsigned long curName = 0;
     
@@ -105,7 +113,21 @@ private:
     bool exciteFlag = false;
     int idX, idY;
     
-    
-    
+#ifdef CREATECCODE
+    bool doneCreatingCCode = false;
+    std::unique_ptr<Label> contLabel;
+    int cont = 0;
+    void *handle;
+    char *error;
+    std::hash<int64> hasher;
+    long curTime;
+    unsigned long newName;
+    String forloop;
+    const char* eq;
+    FILE *fd;
+    String systemInstr;
+#endif
+   
+   
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Body)
 };

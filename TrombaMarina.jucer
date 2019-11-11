@@ -29,6 +29,7 @@
       <FILE id="ediTUH" name="SenselWrapper.h" compile="0" resource="0" file="SenselWrapper/SenselWrapper.h"/>
     </GROUP>
     <GROUP id="{AE08F05C-9F4C-1ABA-72C5-D69FBB6B7B8F}" name="Source">
+      <FILE id="OCtAYu" name="code.c" compile="1" resource="0" file="Source/code.c"/>
       <FILE id="esJ2kZ" name="Global.h" compile="0" resource="0" file="Source/Global.h"/>
       <FILE id="ZMpHKO" name="TrombaString.cpp" compile="1" resource="0"
             file="Source/TrombaString.cpp"/>

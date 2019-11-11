@@ -88,7 +88,9 @@ Body::Body (NamedValueSet& parameters, double k) :  k (k),
     coefficients.push_back (A5);
     coefficients.push_back (A6);
     
-    updateEqGenerator();
+    contLabel = std::make_unique<Label>("Label");
+    contLabel->setText(String (cont), dontSendNotification);
+    addAndMakeVisible (contLabel.get());
 #endif
     
 }
@@ -117,14 +119,22 @@ void Body::paint (Graphics& g)
             g.fillRect ((x - startIdx) * stateWidth, (y - startIdx) * stateHeight, stateWidth, stateHeight);
         }
     }
-    
+    g.setColour (Colours::yellow);
+//    g.drawText(String(cont), 0, 0, 100, 100, Justification::centred);
+#ifdef CREATECCODE
+    const void* address = static_cast<const void*>(handle);
+    std::stringstream ss;
+    ss << address;
+    std::string name = ss.str();
+    g.drawText(String(name), 0, 0, 100, 100, Justification::centred);
+#endif
 }
 
 void Body::resized()
 {
     // This method is where you should set the bounds of any child
     // components that your component contains..
-
+//    contLabel->setBounds(0, 0, 100, 100);
 }
 
 void Body::calculateUpdateEq()
@@ -215,15 +225,17 @@ void Body::mouseDrag (const MouseEvent& e)
 
 #ifdef CREATECCODE
 
-void Body::updateEqGenerator()
+void Body::updateEqGenerator1()
 {
-    void *handle;
-    char *error;
-    std::hash<int64> hasher;
-    auto newName = hasher (juce::Time::getCurrentTime().toMilliseconds());
+    size_t sizeTest = 1000;
+    char test[sizeTest];
     
+    std::cout << String(getcwd(test, sizeTest)) << std::endl;
+    curTime = juce::Time::getCurrentTime().toMilliseconds();
+    newName = hasher (curTime);
+
     // convert updateEqString to char
-    String forloop =
+    forloop =
     "for (int l = 2; l < " + String(Nx - 2) + "; ++l)\n"
     "{\n"
         "for (int m = 2; m < " + String(Ny - 2) + "; ++m)\n"
@@ -236,37 +248,49 @@ void Body::updateEqGenerator()
             "+ coeffs[5] * (uPrev[l + (m+1) * Nx] + uPrev[l + (m-1) * Nx] + uPrev[l+1 + m * Nx] + uPrev[l-1 + m * Nx]);\n"
         "}\n"
     "}";
-    const char* eq = toConstChar(forloop);
-    
-    FILE *fd= fopen("code.c", "w");
-    
-    fprintf(fd, "#include <stdio.h>\n"
-            "void updateEq(double* uNext, double* u, double* uPrev, double* coeffs, int Nx)\n"
-            "{\n"
-            "%s\n"
-            "}", eq);
+    eq = toConstChar(forloop);
+    fd = fopen("./code.c", "w");
+    if (fd == NULL)
+    {
+        cont = 10;
+        return;
+//        fprintf(stderr, "Could not open '%s' for writing: %s\n", "code.c", strerror(errno));
+    } else {
+        fprintf(fd, "#include <stdio.h>\n"
+                "void updateEq(double* uNext, double* u, double* uPrev, double* coeffs, int Nx)\n"
+                "{\n"
+                "%s\n"
+                "}", eq);
+    }
+    ++cont;
+}
+void Body::updateEqGenerator2()
+{
     fclose(fd);
-    
-    String systemInstr;
-    
-    systemInstr = String ("clang -shared -undefined dynamic_lookup -O3 -o " + String (newName) + ".so code.c -g");
+    systemInstr = String ("./clang -shared -undefined dynamic_lookup -O3 -o generated.so code.c -g");
     system (toConstChar (systemInstr));
-    handle = dlopen (toConstChar (String (String (newName) + ".so")), RTLD_LAZY);
-   
+    handle = dlopen ("generated.so", RTLD_LAZY);
     if (!handle)
     {
         fprintf (stderr, "%s\n", dlerror());
         exit(1);
     }
+    ++cont;
+}
+
+void Body::updateEqGenerator3()
+{
     
     dlerror();    /* Clear any existing error */
     
-    *(void **)(&updateEq) = dlsym (handle, "updateEq"); // second argument finds function name
+    *(void **)(&updateEq) = dlsym (handle, "updateEq"); //dlsym (handle, "updateEq"); // second argument finds function name
     
     if ((error = dlerror()) != NULL)  {
         fprintf (stderr, "%s\n", error);
         exit(1);
     }
+    doneCreatingCCode = true;
+    ++cont;
 }
 #endif
 

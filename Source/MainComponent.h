@@ -46,12 +46,17 @@ private:
     std::shared_ptr<Bridge> bridge;
     std::shared_ptr<Body> body;
 
+    // Debug things
     std::unique_ptr<TextButton> continueButton;
     std::unique_ptr<Label> stateLabel;
     std::unique_ptr<Label> currentSampleLabel;
     std::atomic<bool> continueFlag;
     
     unsigned long curSample = 1; // first sample is index 1 (like Matlab)
+    
+    // Create c code
+    std::unique_ptr<TextButton> createCButton;
+    
     double bridgeLocRatio;
     
     // Sensel Stuff

@@ -9,7 +9,7 @@
 */
 
 #pragma once
-#define CREATECCODE
+//#define CREATECCODE
 #define CUBICINTERPOL
 
 namespace Global
