@@ -147,13 +147,14 @@ void Tromba::resized()
 void Tromba::calculateCollision()
 {
     g = 0;
-    if (alph == 1)
+    if (etaCol > 0)
     {
-        if (etaCol > 0)
-            g = sqrt(K * (alph + 1.0) * 0.5);
-    } else {
-        if (etaCol > 0) // subplus
-            g = sqrt(K * (alph + 1.0) * 0.5) * pow(etaCol, (alph - 1) * 0.5);
+        if (alph == 1)
+        {
+                g = sqrt(K * (alph + 1.0) * 0.5);
+        } else {
+                g = sqrt(K * (alph + 1.0) * 0.5) * pow(etaCol, (alph - 1) * 0.5);
+        }
     }
 }
 
