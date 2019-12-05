@@ -161,8 +161,8 @@ void Tromba::calculateCollision()
 void Tromba::calculateConnection()
 {
     //    double FalphaTickTest;
-    phiMinus = k * (K1 + 2 * K3 * etaSpring * etaSpring) - 4.0 * sx;
-    phiPlus = k * (K1 + 2 * K3 * etaSpring * etaSpring) + 4.0 * sx;
+    phiMinus = k * (K1 + 2.0 * K3 * etaSpring * etaSpring) - 4.0 * sx;
+    phiPlus = k * (K1 + 2.0 * K3 * etaSpring * etaSpring) + 4.0 * sx;
     
     gg = g * g;
     ggKsq = g * g * kSq;
