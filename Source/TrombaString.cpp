@@ -35,7 +35,7 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
 //    s0 = s0 * rho * A;
 //    s1 = s1 * rho * A;
     
-    N = floor (1.0 / h);
+    N = floor (1.0 / h) - 2;
     h = 1.0 / N;
     std::cout << "String numpoints: " << N << std::endl;
     // initialise state vectors
@@ -90,10 +90,10 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
 
     qPrev = -_Vb.load();
     
-    if (Global::debug)
+    if (Global::bowDebug && Global::exciteString && bowing)
     {
         bp = _bowPos.load();
-        setBowingParameters (0.0, 0.0, 0.05, 0.2, true);
+        setBowingParameters (0.0, 0.0, 1, 0.2, true);
     }
     
     connPos = floor(connRatio * N);
@@ -193,8 +193,8 @@ void TrombaString::calculateUpdateEq()
 
 void TrombaString::dampingFinger()
 {
-    float dampLoc = _dampingFingerPos.load() * N;
-    double uVal = Global::interpolation(u[0], floor(dampLoc), dampLoc - floor(dampLoc));
+    float dampLoc = Global::clamp(_dampingFingerPos.load() * N, 3, N - 4);
+    double uVal = Global::interpolation(u[0], floor(dampLoc), dampLoc - floor(dampLoc)) - offset;
     Global::extrapolation (u[0], floor(dampLoc), dampLoc - floor(dampLoc), -(uVal - uVal * 0.96));
 }
 
@@ -215,12 +215,13 @@ void TrombaString::excite()
     int width = 10;
     int loc = floor (N * static_cast<float>(xPos) / static_cast<float>(getWidth()));
     if (Global::debug)
-        loc = floor(N / 4.0);
+        loc = floor(N / 2.0);
     
     int startIdx = Global::clamp (loc - width / 2.0, 2, N - 2 - width);
+    double amp = Global::debug ? -offset * 10000.0 : 100.0;
     for (int i = 0; i < width; ++i)
     {
-        double val = (1 - cos (2 * double_Pi * i / width)) * (Global::debug ? 0.5 : 0.5 / (Global::outputScaling * 10));
+        double val = amp * (1.0 - cos (2.0 * double_Pi * i / width)) * (Global::debug ? 0.5 : 0.5 / (Global::outputScaling * 10.0));
         u[1][startIdx + i] = u[1][startIdx + i] + val;
         u[2][startIdx + i] = u[2][startIdx + i] + val;
     }
@@ -276,7 +277,6 @@ void TrombaString::mouseDrag (const MouseEvent& e)
 {
     if (!bowing)
         return;
-    
     if (ModifierKeys::getCurrentModifiers() == ModifierKeys::leftButtonModifier + ModifierKeys::ctrlModifier)
         _dampingFingerPos.store (e.x / static_cast<float>(getWidth()));
     else
@@ -293,10 +293,9 @@ void TrombaString::setBowingParameters (float x, float y, double Fb, double Vb, 
     xPos = x * (mouseInteraction ? 1 : getWidth());
     yPos = y * (mouseInteraction ? 1 : getHeight());
     bowFlag = true;
-    
-    _Vb.store (Global::debug || !mouseInteraction ? Vb : (yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
+    _Vb.store (Global::bowDebug || !mouseInteraction ? Vb : (yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
     _Fb.store (Fb);
     
-    int loc = Global::debug ? bp : floor (N * static_cast<float> (xPos) / static_cast<float> (getWidth()));
+    int loc = Global::bowDebug ? floor(N * 0.5) : floor (N * static_cast<float> (xPos) / static_cast<float> (getWidth()));
     _bowPos.store (Global::clamp (loc, 3, N - 5)); // check whether these values are correct!!);
 }

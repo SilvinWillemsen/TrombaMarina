@@ -9,7 +9,7 @@
 */
 
 #pragma once
-#define CUBICINTERPOL
+#define NOINTERPOL
 
 namespace Global
 {
@@ -80,9 +80,10 @@ namespace Global
     }
     
     static bool debug = false;
+    static bool bowDebug = false;
     static int debugButtonsHeight = 100;
     static bool initialiseWithExcitation = false;
-    static bool exciteString = false;
+    static bool exciteString = true;
     static bool exciteBody = false;
     static double outputScaling = debug ? 1.0 : 1000.0;
 }

@@ -30,10 +30,10 @@ Bridge::Bridge (NamedValueSet& parameters, double k) :  k (k),
     B1 = M / (k * k);
     B2 = M * w1 * w1;
     
-    D = 1.0 / (M / (k * k) + R / (2.0 * k));
+    D = 1.0 / (M / (k * k) + R * M / (2.0 * k));
     
     A1 = 2.0 * B1 - B2;
-    A2 = -B1 + R / (2 * k);
+    A2 = -B1 + R * M / (2.0 * k);
     A3 = B2;
     A1 *= D;
     A2 *= D;
@@ -52,10 +52,12 @@ void Bridge::paint (Graphics& g)
        You should replace everything in this method with your own
        drawing code..
     */
-    int visualScaling = Global::outputScaling * 1000.0;
+    int visualScaling = Global::outputScaling * 100.0;
     g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));   // clear the background
-    g.setColour(Colours::lawngreen);
-    g.drawEllipse (getWidth() * 0.5 - 3, -u[1][0] * visualScaling + getHeight() * 0.5 - 8, 6.0, 6.0, 4.0);
+    g.setColour (Colours::grey);
+    g.drawLine (0, getHeight() * 0.5 - offset * visualScaling - massRadius, getWidth(), getHeight() * 0.5 - offset * visualScaling - massRadius, 1.0);
+    g.setColour (Colours::lawngreen);
+    g.drawEllipse (getWidth() * 0.5 - 3, -u[1][0] * visualScaling + getHeight() * 0.5 - 2.0 * massRadius, 6.0, 6.0, massRadius);
     int cVal = Global::clamp (255 * 0.5 * (bodyState * visualScaling * 0.1 + 1), 0, 255);
     g.setColour (Colour::fromRGB (cVal, cVal, cVal));
     g.fillRect (getWidth() * 0.2, getHeight() * 0.5 - visualScaling * bodyState, 0.6 * getWidth(), 5);

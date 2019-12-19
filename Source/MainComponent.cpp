@@ -79,27 +79,27 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     
     NamedValueSet parameters;
     
-    offset = 1e-6;
+    offset = 1e-5;
     
     // string
     double r = 0.0005;
-    double f0 = 45.0;
+    double f0 = 60.0;
     double rhoS = 7850.0;
     double A = r * r * double_Pi;
     double T = (f0 * f0 * 4.0) * rhoS * A;
-    bridgeLocRatio = 0.9;
+    bridgeLocRatio = 18.0 / 20.0;
     parameters.set ("rhoS", rhoS);
     parameters.set ("r", r);
     parameters.set ("A", r * r * double_Pi);
     parameters.set ("T", T);
     parameters.set ("ES", 2e11);
     parameters.set ("Iner", r * r * r * r * double_Pi * 0.25);
-    parameters.set ("s0S", 1);
-    parameters.set ("s1S", 0.005);
+    parameters.set ("s0S", 0.1);
+    parameters.set ("s1S", 1);
     
     // bridge
     parameters.set ("M", 0.001);
-    parameters.set ("R", 0);
+    parameters.set ("R", 0.1);
     parameters.set ("w1", 2.0 * double_Pi * 500);
     parameters.set ("offset", offset);
     
@@ -108,21 +108,21 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     parameters.set ("H", 0.001);
     parameters.set ("EP", 2e11);
     parameters.set ("Lx", 1.5);
-    parameters.set ("Ly", 0.3);
+    parameters.set ("Ly", 0.4);
     parameters.set ("s0P", 5);
     parameters.set ("s1P", 0.01);
-    parameters.set ("colRatioX", bridgeLocRatio);
-    parameters.set ("colRatioY", 0.5);
-    
-    // collision
-    parameters.set ("K", 5.0e12);
-    parameters.set ("alpha", 1.0);
     
     // connection
-    parameters.set ("K1", 1e6);
-    parameters.set ("K3", 100);
-    parameters.set ("sx", 1.0);
+    parameters.set ("K1", 5.0e6);
+    parameters.set ("alpha1", 1.0);
     parameters.set ("connRatio", bridgeLocRatio);
+    
+    // plate collision
+    parameters.set ("K2", 5.0e10);
+    parameters.set ("alpha2", 1.0);
+    parameters.set ("colRatioX", 0.8);
+    parameters.set ("colRatioY", 0.5);
+    
     
     tromba = std::make_unique<Tromba> (parameters, k);
     addAndMakeVisible (tromba.get());
@@ -163,12 +163,12 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
         {
             if (continueFlag.load() == true)
             {
-                if (curSample % 1000 == 0)
-                    continueFlag.store (false);
+//                if (curSample % 1 == 0)
+//                    continueFlag.store (false);
                 tromba->setCurSample (curSample);
                 tromba->calculateUpdateEqs();
-                tromba->calculateCollision();
-                tromba->calculateConnection();
+                tromba->calculateCollisions();
+//                tromba->calculateConnection();
                 tromba->solveSystem();
                 tromba->updateStates();
                 ++curSample;
@@ -176,17 +176,14 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
         } else {
             if (continueFlag.load() == true)
             {
-////                if (curSample ==)
-//                    continueFlag.store (false);
                 tromba->calculateUpdateEqs();
                 trombaString->dampingFinger();
-                tromba->calculateCollision();
-                tromba->calculateConnection();
+                tromba->calculateCollisions();
                 tromba->solveSystem();
                 tromba->updateStates();
             }
         }
-        output = tromba->getOutput() * (Global::debug ? 1.0 : Global::outputScaling) - offset;
+        output = tromba->getOutput() * (Global::debug ? 1.0 : Global::outputScaling);
         channelData1[i] = Global::clamp(output, -1, 1);
         channelData2[i] = Global::clamp(output, -1, 1);
     }
@@ -235,7 +232,7 @@ void MainComponent::timerCallback()
     repaint();
     if (Global::debug)
     {
-        stateLabel->setText (String (body->getStateAt(1, 5, 5)), dontSendNotification);
+        stateLabel->setText (String (trombaString->getStateAt (1, floor(bridgeLocRatio * trombaString->getNumPoints()))), dontSendNotification);
 //        stateLabel->setText (String (trombaString->getStateAt (1, floor (trombaString->getNumPoints() / 2.0))), dontSendNotification);
         currentSampleLabel->setText (String (curSample), dontSendNotification);
     }

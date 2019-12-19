@@ -53,7 +53,7 @@ private:
     std::atomic<bool> continueFlag;
     
     double offset;
-    unsigned long curSample = 1; // first sample is index 1 (like Matlab)
+    unsigned long curSample = 0; // first sample is index 1 (like Matlab)
     
     // Create c code
     std::unique_ptr<TextButton> createCButton;

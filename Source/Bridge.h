@@ -29,13 +29,14 @@ public:
     
     void excite();
     
-    double getOutput() { return u[1][0]; };
+    double getOutput() { return u[1][0] - offset; };
     double getState (int time) { return u[time][0]; };
     void setState (double val) { u[0][0] = val; };
     
     void mouseDown (const MouseEvent& e) override;
     
     void setBodyState (double state) { bodyState = state; };
+    void addToState (double val) {u[0][0] += val; };
     
 private:
     double k;
@@ -51,5 +52,6 @@ private:
     double offset = 0;
     double bodyState;
     
+    float massRadius = 4.0;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Bridge)
 };

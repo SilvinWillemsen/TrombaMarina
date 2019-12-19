@@ -40,7 +40,7 @@ public:
     void mouseDrag (const MouseEvent& e) override;
     void mouseUp (const MouseEvent& e) override;
     
-    double getOutput (double ratio) { int idx = floor(ratio * N); return u[1][idx]; };
+    double getOutput (double ratio) { int idx = floor(ratio * N); return u[1][idx] - offset; };
     double getStateAt (int time, int idx) { return u[time][idx]; };
     
     void setStateAt (int idx, double val) { u[0][idx] = val; }; // always uNext
@@ -80,13 +80,13 @@ private:
     std::vector<std::vector<double>> uVecs;
     
     
-    double* uTmp;
+    double* uTmp = nullptr;
     
     // excitation variables
     int xPos, yPos;
 //    bool exciteFlag = Global::initialiseWithExcitation ? (Global::exciteString ? true : false) : false;
     bool exciteFlag = false;
-    bool bowFlag = Global::debug ? true : false;
+    bool bowFlag = false;
     bool bowing = true;
     
     std::atomic<double> _Fb {1.0};
