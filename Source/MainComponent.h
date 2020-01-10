@@ -16,7 +16,7 @@
     This component lives inside our window, and this is where you should put all
     your controls and content.
 */
-class MainComponent   : public AudioAppComponent, public Timer, public Button::Listener, public HighResolutionTimer
+class MainComponent   : public AudioAppComponent, public Timer, public Button::Listener, public Slider::Listener, public HighResolutionTimer
 {
 public:
     //==============================================================================
@@ -36,6 +36,7 @@ public:
     void hiResTimerCallback() override;
     
     void buttonClicked (Button* button) override;
+    void sliderValueChanged (Slider* slider) override;
 
 private:
     //==============================================================================
@@ -64,5 +65,9 @@ private:
     OwnedArray<Sensel> sensels;
     int amountOfSensels = 1;
     
+    bool outputMass = false;
+    std::unique_ptr<TextButton> outputButton;
+    OwnedArray<Slider> mixSliders;
+    std::vector<float> mixVals;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

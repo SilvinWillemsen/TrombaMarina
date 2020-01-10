@@ -70,8 +70,33 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         currentSampleLabel->setColour (Label::textColourId, Colours::white);
         addAndMakeVisible (currentSampleLabel.get());
         
+    } else {
+        stateLabel = std::make_unique<Label>("StateLabel");
+        stateLabel->setColour (Label::textColourId, Colours::white);
+        addAndMakeVisible (stateLabel.get());
+        
+        currentSampleLabel = std::make_unique<Label>("CurrentSampleLabel");
+        currentSampleLabel->setColour (Label::textColourId, Colours::white);
+        addAndMakeVisible (currentSampleLabel.get());
+        
+        outputButton = std::make_unique<TextButton>("ContinueButton");
+        outputButton->setButtonText ("change output");
+        addAndMakeVisible (outputButton.get());
+        outputButton->addListener (this);
+        
+        mixVals.resize(3);
+        for (int i = 0; i < 3; ++i)
+        {
+            mixSliders.add (new Slider(Slider::LinearBarVertical, Slider::NoTextBox));
+            Slider* newSlider = mixSliders[mixSliders.size() - 1];
+            newSlider->setRange (0, 1);
+            newSlider->setValue (0.5);
+            mixVals[i] = newSlider->getValue();
+            newSlider->addListener (this);
+            addAndMakeVisible (newSlider);
+        }
+        
     }
-
     continueFlag.store (true);
     fs = sampleRate;
     
@@ -104,13 +129,13 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     parameters.set ("offset", offset);
     
     // body
-    parameters.set ("rhoP", 7850.0);
-    parameters.set ("H", 0.001);
-    parameters.set ("EP", 2e11);
+    parameters.set ("rhoP", 10.0);
+    parameters.set ("H", 0.01);
+    parameters.set ("EP", 2e5);
     parameters.set ("Lx", 1.5);
     parameters.set ("Ly", 0.4);
     parameters.set ("s0P", 5);
-    parameters.set ("s1P", 0.01);
+    parameters.set ("s1P", 0.05);
     
     // connection
     parameters.set ("K1", 5.0e6);
@@ -183,9 +208,14 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
                 tromba->updateStates();
             }
         }
-        output = tromba->getOutput() * (Global::debug ? 1.0 : Global::outputScaling);
-        channelData1[i] = Global::clamp(output, -1, 1);
-        channelData2[i] = Global::clamp(output, -1, 1);
+//        if (outputMass)
+        output = tromba->getOutput(9.0 / 10.0) * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * mixVals[0]
+                + tromba->getOutput() * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * mixVals[1]
+                + tromba->getOutput(0.8, 0.5) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling) * mixVals[2];
+//        else
+//            output = tromba->getOutput(0.8, 0.5) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling);
+        channelData1[i] = Global::outputClamp (output);
+        channelData2[i] = Global::outputClamp (output);
     }
 }
 
@@ -222,20 +252,33 @@ void MainComponent::resized()
             debugArea.removeFromRight (margin);
             currentSampleLabel->setBounds (debugArea.removeFromLeft (100));
         } else {
+            Rectangle<int> controlArea = totalArea.removeFromRight(100);
             tromba->setBounds (totalArea.removeFromTop(getHeight()));
+            outputButton->setBounds(controlArea.removeFromBottom(100));
+            stateLabel->setBounds (controlArea.removeFromTop (20));
+            controlArea.removeFromTop (10);
+            currentSampleLabel->setBounds (controlArea.removeFromTop (20));
+            float oOMSsize = 1.0 / static_cast<float> (mixSliders.size());
+            for (int i = 0; i < mixSliders.size(); ++i)
+            {
+                mixSliders[i]->setBounds(controlArea.removeFromLeft(100.0 * oOMSsize));
+            }
+//            mixSliders[0]->setBounds(controlArea)
         }
     }
+    
 }
 
 void MainComponent::timerCallback()
 {
     repaint();
-    if (Global::debug)
-    {
-        stateLabel->setText (String (trombaString->getStateAt (1, floor(bridgeLocRatio * trombaString->getNumPoints()))), dontSendNotification);
+//    if (Global::debug)
+//    {
+        stateLabel->setText(String(trombaString->getVb()) + " " + String(trombaString->getBowPos()), dontSendNotification);
+//        stateLabel->setText (String (trombaString->getStateAt (1, floor(bridgeLocRatio * trombaString->getNumPoints()))), dontSendNotification);
 //        stateLabel->setText (String (trombaString->getStateAt (1, floor (trombaString->getNumPoints() / 2.0))), dontSendNotification);
         currentSampleLabel->setText (String (curSample), dontSendNotification);
-    }
+//    }
 }
 
 void MainComponent::hiResTimerCallback()
@@ -295,4 +338,31 @@ void MainComponent::buttonClicked (Button* button)
     {
         continueFlag.store (true);
     }
+    if (button == outputButton.get())
+    {
+        if (outputMass)
+        {
+            outputButton->setButtonText("change output");
+            std::cout << "plate" << std::endl;
+        }
+        else
+        {
+            outputButton->setButtonText("change output");
+            std::cout << "mass" << std::endl;
+        }
+        outputMass = !outputMass;
+    }
+}
+
+void MainComponent::sliderValueChanged(Slider* slider)
+{
+    for (int i = 0; i < mixSliders.size(); ++i)
+    {
+        if (slider == mixSliders[i])
+        {
+            mixVals[i] = mixSliders[i]->getValue();
+            return;
+        }
+    }
+        
 }

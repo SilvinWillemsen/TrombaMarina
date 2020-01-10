@@ -60,6 +60,8 @@ public:
     double getq() { return q; };
     double getb() { return b; };
     double getNRiterator() { return NRiterator; };
+    double getVb() { return Vb; };
+    
 private:
     double k, h;
     int N;
@@ -83,7 +85,8 @@ private:
     double* uTmp = nullptr;
     
     // excitation variables
-    int xPos, yPos;
+    int xPos = 0;
+    int yPos = 0;
 //    bool exciteFlag = Global::initialiseWithExcitation ? (Global::exciteString ? true : false) : false;
     bool exciteFlag = false;
     bool bowFlag = false;

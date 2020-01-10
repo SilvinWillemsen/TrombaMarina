@@ -21,14 +21,14 @@ Body::Body (NamedValueSet& parameters, double k) :  k (k),
                                                     Lx (*parameters.getVarPointer("Lx")),
                                                     Ly (*parameters.getVarPointer("Ly"))
 {
-    double Dkappa = E * H * H * H / (12.0 * (1.0-0.3 * 0.3));
+    double Dkappa = E * H * H * H / (12.0 * (1.0-(0.3*0.3)));
     kappaSq = Dkappa / (rho * H);
-    
+//    s1 = s1 / (rho * H);
     h = 2.0 * sqrt(k * (s1 + sqrt(kappaSq + s1 * s1)));
-    
+    std::cout << "h = " << h << std::endl;
     // lower limit on h, otherwise there will be too many points
-    if (h < 0.05)
-        h = 0.05;
+    if (h < 0.015)
+        h = 0.015;
     
 //    // Scale damping by rho * A
 //    s0 = s0 * rho * H;
@@ -38,6 +38,8 @@ Body::Body (NamedValueSet& parameters, double k) :  k (k),
     Ny = floor(Ly/h);
     
     h = std::max (Lx/Nx, Ly/Ny);
+    Nx -= 1;
+    Ny -= 1;
     N = Nx * Ny;
     
     // initialise state vectors
@@ -55,9 +57,9 @@ Body::Body (NamedValueSet& parameters, double k) :  k (k),
     B2 = (2.0f * s1 * k) / (h * h);
     
     A1 = (2.0 - 4.0 * B2 - 20.0 * B1);
-    A2 = 8.0 * B1;
-    A3 = -2.0 * B1;
-    A4 = -B1;
+    A2 = 8.0 * B1 + B2; //included B2 as well! :O
+    A3 = -2.0 * B1; // l+1,m+1, etc
+    A4 = -B1; // l+2,m, etc.
     A5 = (s0 * k - 1.0 + 4.0 * B2);
     A6 = -B2;
     

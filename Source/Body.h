@@ -38,7 +38,7 @@ public:
     
     
     double getOutput (double ratioX, double ratioY) {
-        int idx = floor (Nx * ratioX) + floor (ratioY * Ny * Nx);
+        int idx = floor (Nx * (ratioX + floor(ratioY * Ny)));
         return u[1][idx];
         
     };

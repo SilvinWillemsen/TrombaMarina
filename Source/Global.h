@@ -9,10 +9,27 @@
 */
 
 #pragma once
-#define NOINTERPOL
+#define CUBICINTERPOL
 
 namespace Global
 {
+    static double outputClamp (double val)
+    {
+        if (val < -1.0)
+        {
+            val = -1.0;
+            std::cout << "outputClamped!!" << std::endl;
+            return val;
+        }
+        else if (val > 1.0)
+        {
+            val = 1.0;
+            std::cout << "outputClamped!!" << std::endl;
+            return val;
+        }
+        return val;
+    }
+    
     static double clamp (double val, double min, double max)
     {
         if (val < min)

@@ -293,7 +293,7 @@ void TrombaString::setBowingParameters (float x, float y, double Fb, double Vb, 
     xPos = x * (mouseInteraction ? 1 : getWidth());
     yPos = y * (mouseInteraction ? 1 : getHeight());
     bowFlag = true;
-    _Vb.store (Global::bowDebug || !mouseInteraction ? Vb : (yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
+    _Vb.store (Global::bowDebug || !mouseInteraction ? Vb : -(yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
     _Fb.store (Fb);
     
     int loc = Global::bowDebug ? floor(N * 0.5) : floor (N * static_cast<float> (xPos) / static_cast<float> (getWidth()));
