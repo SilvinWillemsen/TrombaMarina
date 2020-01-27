@@ -62,6 +62,10 @@ public:
     double getNRiterator() { return NRiterator; };
     double getVb() { return Vb; };
     
+#ifndef EXPONENTIALBOW
+    void calcZDot();
+#endif
+    
 private:
     double k, h;
     int N;
@@ -74,6 +78,9 @@ private:
     
     // NR bow constants
     double b1, b2;
+    
+    // Elastoplastic
+    double z, zPrev, zPrevIt, zDot, zDotNext, zDotPrev, an, anPrev, scaleFact, fnl, z_ba, Fn, fC, fS, sig0, sig1, sig2, sig3, sig3w, oOSig0, E2, oOstrvSq, zss, zssNotAbs, oOZss, oOZssMinZba, dz_ss, dz_ssAbs, strv, espon, alph, dalph_v, dalph_z, d_fnlv, d_fnlz, d_fnl, arg, mus, mud, K1, vRelTemp, zTemp, g1, g2, dg1v, dg1z, dg2v, dg2z, determ, invJac, fp, qPrevIt;
     
     // pointers to states
     std::vector<double*> u;

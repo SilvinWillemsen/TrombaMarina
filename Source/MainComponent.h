@@ -69,5 +69,7 @@ private:
     std::unique_ptr<TextButton> outputButton;
     OwnedArray<Slider> mixSliders;
     std::vector<float> mixVals;
+    std::vector<float> prevMixVals;
+    float aG = 0.99;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

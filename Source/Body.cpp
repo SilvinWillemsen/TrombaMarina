@@ -27,8 +27,8 @@ Body::Body (NamedValueSet& parameters, double k) :  k (k),
     h = 2.0 * sqrt(k * (s1 + sqrt(kappaSq + s1 * s1)));
     std::cout << "h = " << h << std::endl;
     // lower limit on h, otherwise there will be too many points
-    if (h < 0.015)
-        h = 0.015;
+    if (h < 0.02)
+        h = 0.02;
     
 //    // Scale damping by rho * A
 //    s0 = s0 * rho * H;
@@ -37,6 +37,7 @@ Body::Body (NamedValueSet& parameters, double k) :  k (k),
     Nx = floor(Lx/h);
     Ny = floor(Ly/h);
     
+    std::cout << "(" << Nx << ", " << Ny << ")" << std::endl;
     h = std::max (Lx/Nx, Ly/Ny);
     Nx -= 1;
     Ny -= 1;

@@ -85,6 +85,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         outputButton->addListener (this);
         
         mixVals.resize(3);
+        prevMixVals.resize(3);
         for (int i = 0; i < 3; ++i)
         {
             mixSliders.add (new Slider(Slider::LinearBarVertical, Slider::NoTextBox));
@@ -94,6 +95,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
             mixVals[i] = newSlider->getValue();
             newSlider->addListener (this);
             addAndMakeVisible (newSlider);
+            prevMixVals[i] = mixSliders[i]->getValue();
         }
         
     }
@@ -147,7 +149,6 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     parameters.set ("alpha2", 1.0);
     parameters.set ("colRatioX", 0.8);
     parameters.set ("colRatioY", 0.5);
-    
     
     tromba = std::make_unique<Tromba> (parameters, k);
     addAndMakeVisible (tromba.get());
@@ -208,10 +209,14 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
                 tromba->updateStates();
             }
         }
-//        if (outputMass)
-        output = tromba->getOutput(9.0 / 10.0) * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * mixVals[0]
-                + tromba->getOutput() * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * mixVals[1]
-                + tromba->getOutput(0.8, 0.5) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling) * mixVals[2];
+
+        // lowpass mixcontrol
+        for (int j = 0; j < 3; ++j)
+            prevMixVals[j] = aG * prevMixVals[j] + (1-aG) * mixVals[j];
+        
+        output = tromba->getOutput(9.0 / 10.0) * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * prevMixVals[0]
+                + tromba->getOutput() * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * prevMixVals[1]
+                + tromba->getOutput(0.8, 0.5) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling) * prevMixVals[2];
 //        else
 //            output = tromba->getOutput(0.8, 0.5) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling);
         channelData1[i] = Global::outputClamp (output);

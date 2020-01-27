@@ -10,6 +10,7 @@
 
 #pragma once
 #define CUBICINTERPOL
+#define EXPONENTIALBOW
 
 namespace Global
 {
@@ -44,6 +45,8 @@ namespace Global
         }
         return val;
     }
+    static inline int sgn (double val) { return (0 < val) - (val < 0); };
+
 #ifdef NOINTERPOL
     static double interpolation (double* uVec, int bp, double alpha)
     {
