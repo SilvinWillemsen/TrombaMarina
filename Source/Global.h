@@ -10,7 +10,7 @@
 
 #pragma once
 #define CUBICINTERPOL
-#define EXPONENTIALBOW
+//#define EXPONENTIALBOW
 
 namespace Global
 {

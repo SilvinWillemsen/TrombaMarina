@@ -64,6 +64,13 @@ public:
     
 #ifndef EXPONENTIALBOW
     void calcZDot();
+    void setNoise (double val) { sig3 = val; };
+    
+    void setFn (double val) {
+        _Fn.store(val);
+        _fC.store(mud * val);
+        _fS.store(mus * val);
+    };
 #endif
     
 private:
@@ -80,7 +87,9 @@ private:
     double b1, b2;
     
     // Elastoplastic
-    double z, zPrev, zPrevIt, zDot, zDotNext, zDotPrev, an, anPrev, scaleFact, fnl, z_ba, Fn, fC, fS, sig0, sig1, sig2, sig3, sig3w, oOSig0, E2, oOstrvSq, zss, zssNotAbs, oOZss, oOZssMinZba, dz_ss, dz_ssAbs, strv, espon, alph, dalph_v, dalph_z, d_fnlv, d_fnlz, d_fnl, arg, mus, mud, K1, vRelTemp, zTemp, g1, g2, dg1v, dg1z, dg2v, dg2z, determ, invJac, fp, qPrevIt;
+    double z, zPrev, zPrevIt, zDot, zDotNext, zDotPrev, an, anPrev, scaleFact, fnl, z_ba, fC, fS, sig0, sig1, sig2, sig3, sig3w, oOSig0, E2, oOstrvSq, zss, zssNotAbs, oOZss, oOZssMinZba, dz_ss, dz_ssAbs, strv, espon, alph, dalph_v, dalph_z, d_fnlv, d_fnlz, d_fnl, arg, mus, mud, K1, vRelTemp, zTemp, g1, g2, dg1v, dg1z, dg2v, dg2z, determ, invJac, fp, qPrevIt, velCalcDiv;
+    int limitCount = 0;
+    Random rand;
     
     // pointers to states
     std::vector<double*> u;
@@ -100,6 +109,9 @@ private:
     bool bowing = true;
     
     std::atomic<double> _Fb {1.0};
+    std::atomic<double> _Fn {0.5};
+    std::atomic<double> _fC;
+    std::atomic<double> _fS;
     std::atomic<double> _Vb {-0.2};
     std::atomic<double> _bowPos {96};
     double Fb, Vb, alpha;

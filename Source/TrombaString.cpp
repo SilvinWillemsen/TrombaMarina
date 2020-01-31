@@ -70,25 +70,29 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
     mud = 0.3; // dynamic friction coeff (must be < mus!!) %EDIT: and bigger than 0
     strv = 0.1;      // "stribeck" velocity
     
-    Fn = 1;    // Normal force
+    _Fn.store(0.3);    // Normal force
     
-    fC = mud * Fn; // coulomb force
-    fS = mus * Fn; // stiction force
+    _fC.store (mud * _Fn.load()); // coulomb force
+    _fS.store (mus * _Fn.load()); // stiction force
     
-    sig0 = 10000;                   // bristle stiffness
+    sig0 = 100000;                   // bristle stiffness
     sig1 = 0.001*sqrt(sig0);          // bristle damping
     sig2 = 0.4;                     // viscous friction term
-    sig3 = 0;                       // noise term
+    sig3 = 0.2;                       // noise term
     oOstrvSq = 1 / (strv * strv);   // One over strv^2
     z_ba = 0.7 * fC / sig0;         // break-away displacement (has to be < f_c/sigma_0!!)
     
     // Initialise variables for Newton Raphson
     tol = 1e-7;
+    q = 0;
     qPrev = 0;
     zPrev = 0;
     zDotPrev = 0;
     anPrev = 0;
     fp = 0;
+    
+    velCalcDiv =  1 / (sig2 + scaleFact * (2/k + 2 * s0));
+    oOSig0 = 1 / sig0;
 #endif
     
     // set coefficients for update equation
@@ -116,8 +120,12 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
     s1 *= rho * A;
     b2 = (2.0 * s1) / (k * h * h);
     
-    E1 = (1.0 / h) * BM / (rho * A / (k * k) + s0 / k) ;
-
+#ifdef EXPONENTIALBOW
+    E = (1.0 / h) * BM / (rho * A / (k * k) + s0 / k);
+#else
+    E = 1.0 / (h * (rho * A / (k * k) + s0 / k));
+#endif
+    
     qPrev = -_Vb.load();
     
     if (Global::bowDebug && Global::exciteString && bowing)
@@ -211,14 +219,21 @@ void TrombaString::calculateUpdateEq()
     {
         // for using the same 'dynamic variables' during one loop
         Vb = _Vb.load();
+#ifdef EXPONENTIALBOW
         Fb = _Fb.load();
+#else
+        sig3w = (rand.nextFloat() * 2 - 1) * sig3;
+        fC = _fC.load();
+        fS = _fS.load();
+#endif
         bp = floor (_bowPos.load());
         alpha = _bowPos.load() - bp;
         NRbow();
+        
 #ifdef EXPONENTIALBOW
-        excitation = E1 * Fb * q * Global::exp1(-a * q * q);
+        excitation = E * Fb * q * Global::exp1(-a * q * q);
 #else
-        excitation = E1 * (sig0 * z + sig1 * zDot + sig2 * q + sig3w); //* (rho * csA);
+        excitation = E * (sig0 * z + sig1 * zDot + sig2 * q + sig3w); //* (rho * csA);
 #endif
         Global::extrapolation (u[0], bp, alpha, -excitation);
     }
@@ -274,13 +289,14 @@ void TrombaString::NRbow()
     uIPrev1 = Global::interpolation (u[2], bp + 1, alpha);
     uIPrevM1 = Global::interpolation (u[2], bp - 1, alpha);
     
-#ifdef EXPONENTIALBOW
-    // Calculate precalculable part
-    b = 2.0 / k * Vb + 2.0 * s0 * Vb - b1 * (uI - uIPrev) - cOhSq * (uI1 - 2.0 * uI + uIM1) + kOhhSq * (uI2 - 4.0 * uI1 + 6.0 * uI - 4.0 * uIM1 + uIM2) - b2 * ((uI1 - 2 * uI + uIM1) - (uIPrev1 - 2.0 * uIPrev + uIPrevM1));
-    
     // error term
     eps = 1;
     NRiterator = 0;
+    
+#ifdef EXPONENTIALBOW
+    // Calculate precalculable part
+    b = 2.0 / k * Vb + 2.0 * s0 * Vb - b1 * (uI - uIPrev) - cOhSq * (uI1 - 2.0 * uI + uIM1) + kOhhSq * (uI2 - 4.0 * uI1 + 6.0 * uI - 4.0 * uIM1 + uIM2) - b2 * ((uI1 - 2 * uI + uIM1) - (uIPrev1 - 2.0 * uIPrev + uIPrevM1));
+
 
     // NR loop
     while (eps > tol && NRiterator < 100)
@@ -298,7 +314,7 @@ void TrombaString::NRbow()
 #else
     b = 2.0 / k * Vb - b1 * (uI - uIPrev) - cOhSq * (uI1 - 2 * uI + uIM1) + kOhhSq * (uI2 - 4 * uI1 + 6 * uI - 4 * uIM1 + uIM2) + 2 * s0 * Vb - b2 * ((uI1 - 2 * uI + uIM1) - (uIPrev1 - 2 * uIPrev + uIPrevM1));
     z_ba = 0.7 * fC * oOSig0;
-    // b
+
     while (eps > tol && NRiterator < 50 && fC > 0)
     {
         calcZDot();
@@ -340,11 +356,11 @@ void TrombaString::NRbow()
         eps = sqrt((q-qPrevIt)*(q-qPrevIt) + (z-zPrevIt)*(z-zPrevIt));
         ++NRiterator;
     }
-//    if (NRiterator == 50)
-//    {
-//        ++limitCount;
-//        std::cout << Fn << " Limit! " << limitCount <<  std::endl;
-//    }
+    if (NRiterator == 50)
+    {
+        ++limitCount;
+        std::cout << _Fn.load() << " Limit! " << limitCount <<  std::endl;
+    }
     //        std::cout << i << std::endl;
     calcZDot();
     
@@ -370,7 +386,14 @@ void TrombaString::mouseDrag (const MouseEvent& e)
     if (ModifierKeys::getCurrentModifiers() == ModifierKeys::leftButtonModifier + ModifierKeys::ctrlModifier)
         _dampingFingerPos.store (e.x / static_cast<float>(getWidth()));
     else
+    {
+#ifdef EXPONENTIALBOW
         setBowingParameters (e.x, e.y, 0.05, 0.2, true);
+#else
+        setBowingParameters (e.x, e.y, _Fn.load(), 0.2, true);
+#endif
+
+    }
 }
 
 void TrombaString::mouseUp (const MouseEvent& e)
@@ -384,7 +407,11 @@ void TrombaString::setBowingParameters (float x, float y, double Fb, double Vb, 
     yPos = y * (mouseInteraction ? 1 : getHeight());
     bowFlag = true;
     _Vb.store (Global::bowDebug || !mouseInteraction ? Vb : -(yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
+#ifdef EXPONENTIALBOW
     _Fb.store (Fb);
+#else
+    setFn (Fb);
+#endif
     
     int loc = Global::bowDebug ? floor(N * 0.5) : floor (N * static_cast<float> (xPos) / static_cast<float> (getWidth()));
     _bowPos.store (Global::clamp (loc, 3, N - 5)); // check whether these values are correct!!);

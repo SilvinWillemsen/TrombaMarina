@@ -288,8 +288,12 @@ void MainComponent::timerCallback()
 
 void MainComponent::hiResTimerCallback()
 {
-    double maxVb = 1;
+    double maxVb = 0.5;
+#ifdef EXPONENTIALBOW
     double maxFb = 0.1;
+#else
+    double maxFn = 0.7;
+#endif
     for (auto sensel : sensels)
     {
         double finger0X = 0;
@@ -305,7 +309,12 @@ void MainComponent::hiResTimerCallback()
                 float x = sensel->fingers[f].x;
                 float y = sensel->fingers[f].y;
                 float Vb = -sensel->fingers[f].delta_y * 0.5;
+#ifdef EXPONENTIALBOW
                 float Fb = sensel->fingers[f].force;
+#else
+                float Fn = Global::clamp (sensel->fingers[f].force * 10.0, 0, maxFn);
+                std::cout << Fn << std::endl;
+#endif
                 int fingerID = sensel->fingers[f].fingerID;
                 trombaString->setFingerPos (0);
                 if (f == 0 && state) //fingerID == 0)
@@ -313,8 +322,14 @@ void MainComponent::hiResTimerCallback()
                     finger0X = x;
                     finger0Y = y;
                     Vb = Global::clamp (Vb, -maxVb, maxVb);
+#ifdef EXPONENTIALBOW
                     Fb = Global::clamp (Fb, 0, maxFb);
                     trombaString->setBowingParameters (x, y, Fb, Vb, false);
+#else
+                    trombaString->setNoise (Fn * 0.2);
+                    trombaString->setBowingParameters (x, y, Fn, Vb, false);
+#endif
+ 
                 }
                 else if (fingerID > 0)
                 {
