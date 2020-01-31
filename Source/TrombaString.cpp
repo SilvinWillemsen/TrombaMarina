@@ -86,6 +86,7 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k) :  k (k),
     tol = 1e-7;
     q = 0;
     qPrev = 0;
+    z = 0;
     zPrev = 0;
     zDotPrev = 0;
     anPrev = 0;
