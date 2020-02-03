@@ -22,7 +22,7 @@
 class Tromba    : public Component
 {
 public:
-    Tromba (NamedValueSet& parameters, double k);
+    Tromba (NamedValueSet& parameters, double k, BowModel bowModel);
     ~Tromba();
 
     void paint (Graphics&) override;
@@ -43,7 +43,7 @@ public:
     std::shared_ptr<Body> getBody() { return body; };
     
     void setCurSample (unsigned long curSamp) { curSample = curSamp; };
-    
+
 private:
     
     double k, kSq; 

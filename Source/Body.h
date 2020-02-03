@@ -14,10 +14,6 @@
 #include "Global.h"
 //#include "../Source/code.c"
 #include <stdio.h>
-#include <dlfcn.h>
-#include <sstream> //for std::stringstream
-#include <string>  //for std::string
-
 
 //==============================================================================
 /*

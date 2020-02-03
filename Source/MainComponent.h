@@ -65,11 +65,21 @@ private:
     OwnedArray<Sensel> sensels;
     int amountOfSensels = 1;
     
-    bool outputMass = false;
     std::unique_ptr<TextButton> outputButton;
     OwnedArray<Slider> mixSliders;
     std::vector<float> mixVals;
     std::vector<float> prevMixVals;
     float aG = 0.99;
+    
+    // Parameter Sliders
+    OwnedArray<Slider> parameterSliders;
+    std::vector<float> initParams;
+    
+    // Sensel-interaction-to-parameter-maximums
+    double maxVb = 0.5;
+    double maxFb = 0.1;
+    double maxFn = 0.7;
+    double maxNoise = 0.5;
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

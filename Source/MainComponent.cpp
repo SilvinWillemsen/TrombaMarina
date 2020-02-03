@@ -80,7 +80,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         addAndMakeVisible (currentSampleLabel.get());
         
         outputButton = std::make_unique<TextButton>("ContinueButton");
-        outputButton->setButtonText ("change output");
+        outputButton->setButtonText ("Cur bow: elasto");
         addAndMakeVisible (outputButton.get());
         outputButton->addListener (this);
         
@@ -90,14 +90,24 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         {
             mixSliders.add (new Slider(Slider::LinearBarVertical, Slider::NoTextBox));
             Slider* newSlider = mixSliders[mixSliders.size() - 1];
-            newSlider->setRange (0, 1);
-            newSlider->setValue (0.5);
+            newSlider->setRange (0.0, 1.0, 0.001);
+            switch (i)
+            {
+                case 0:
+                    newSlider->setValue (0.5);
+                    break;
+                case 1:
+                    newSlider->setValue (0.0);
+                    break;
+                case 2:
+                    newSlider->setValue (0.75);
+                    break;
+            }
             mixVals[i] = newSlider->getValue();
             newSlider->addListener (this);
             addAndMakeVisible (newSlider);
             prevMixVals[i] = mixSliders[i]->getValue();
         }
-        
     }
     continueFlag.store (true);
     fs = sampleRate;
@@ -113,30 +123,33 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     double f0 = 60.0;
     double rhoS = 7850.0;
     double A = r * r * double_Pi;
-    double T = (f0 * f0 * 4.0) * rhoS * A;
+    double L = 1.0;
+    double T = (f0 * f0 * L * L * 4.0) * rhoS * A;
+    
     bridgeLocRatio = 18.0 / 20.0;
+    parameters.set ("L", L);
     parameters.set ("rhoS", rhoS);
     parameters.set ("r", r);
     parameters.set ("A", r * r * double_Pi);
     parameters.set ("T", T);
     parameters.set ("ES", 2e11);
     parameters.set ("Iner", r * r * r * r * double_Pi * 0.25);
-    parameters.set ("s0S", 0.1);
-    parameters.set ("s1S", 1);
+    parameters.set ("s0S", 0.08);
+    parameters.set ("s1S", 0.02);
     
     // bridge
     parameters.set ("M", 0.001);
-    parameters.set ("R", 0.1);
+    parameters.set ("R", 0.05);
     parameters.set ("w1", 2.0 * double_Pi * 500);
     parameters.set ("offset", offset);
     
     // body
-    parameters.set ("rhoP", 10.0);
+    parameters.set ("rhoP", 50.0);
     parameters.set ("H", 0.01);
     parameters.set ("EP", 2e5);
-    parameters.set ("Lx", 1.5);
-    parameters.set ("Ly", 0.4);
-    parameters.set ("s0P", 5);
+    parameters.set ("Lx", 1.35);
+    parameters.set ("Ly", 0.18);
+    parameters.set ("s0P", 2);
     parameters.set ("s1P", 0.05);
     
     // connection
@@ -145,23 +158,39 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     parameters.set ("connRatio", bridgeLocRatio);
     
     // plate collision
-    parameters.set ("K2", 5.0e10);
+    parameters.set ("K2", 5.0e8);
     parameters.set ("alpha2", 1.0);
     parameters.set ("colRatioX", 0.8);
     parameters.set ("colRatioY", 0.5);
     
-    tromba = std::make_unique<Tromba> (parameters, k);
+    int numDynamicParameters = 3;
+    initParams.resize (numDynamicParameters);
+    for (int i = 0; i < numDynamicParameters; ++i)
+    {
+        parameterSliders.add (new Slider(Slider::RotaryVerticalDrag, Slider::TextBoxBelow));
+        Slider* newSlider = parameterSliders[parameterSliders.size() - 1];
+        newSlider->setRange (0.0, 1.0);
+        newSlider->setValue (1.0);
+        newSlider->addListener (this);
+        addAndMakeVisible (newSlider);
+    }
+    initParams[0] = *parameters.getVarPointer ("s0P");
+    initParams[1] = *parameters.getVarPointer ("s1P");
+    initParams[2] = *parameters.getVarPointer ("w1");
+    
+    tromba = std::make_unique<Tromba> (parameters, k, elastoPlastic);
     addAndMakeVisible (tromba.get());
     
     trombaString = tromba->getString();
     bridge = tromba->getBridge();
     body = tromba->getBody();
     
+    double test = (bridgeLocRatio) * 0.5 + 1.0 / trombaString->getNumPoints();
+    trombaString->setFingerPos (test);
+    std::cout << "fingerPos = " << test << std::endl;
     setSize (800, 600);
     Timer::startTimerHz (40);
-    
-    trombaString->setFingerPos (0.0);
-    
+        
     // start the hi-res timer
     if (sensels.size() != 0)
         if (sensels[0]->senselDetected)
@@ -258,7 +287,7 @@ void MainComponent::resized()
             currentSampleLabel->setBounds (debugArea.removeFromLeft (100));
         } else {
             Rectangle<int> controlArea = totalArea.removeFromRight(100);
-            tromba->setBounds (totalArea.removeFromTop(getHeight()));
+            tromba->setBounds (totalArea.removeFromTop(getHeight() - 100));
             outputButton->setBounds(controlArea.removeFromBottom(100));
             stateLabel->setBounds (controlArea.removeFromTop (20));
             controlArea.removeFromTop (10);
@@ -268,6 +297,8 @@ void MainComponent::resized()
             {
                 mixSliders[i]->setBounds(controlArea.removeFromLeft(100.0 * oOMSsize));
             }
+            
+            
 //            mixSliders[0]->setBounds(controlArea)
         }
     }
@@ -288,12 +319,6 @@ void MainComponent::timerCallback()
 
 void MainComponent::hiResTimerCallback()
 {
-    double maxVb = 0.5;
-#ifdef EXPONENTIALBOW
-    double maxFb = 0.1;
-#else
-    double maxFn = 0.7;
-#endif
     for (auto sensel : sensels)
     {
         double finger0X = 0;
@@ -309,26 +334,26 @@ void MainComponent::hiResTimerCallback()
                 float x = sensel->fingers[f].x;
                 float y = sensel->fingers[f].y;
                 float Vb = -sensel->fingers[f].delta_y * 0.5;
-#ifdef EXPONENTIALBOW
-                float Fb = sensel->fingers[f].force;
-#else
-                float Fn = Global::clamp (sensel->fingers[f].force * 10.0, 0, maxFn);
-                std::cout << Fn << std::endl;
-#endif
+                float Fb = Global::clamp (sensel->fingers[f].force, 0, maxFb);
+                float Fn = Global::clamp (sensel->fingers[f].force * 5.0, 0, maxFn);
+                
                 int fingerID = sensel->fingers[f].fingerID;
-                trombaString->setFingerPos (0);
+//                trombaString->setFingerPos (0);
                 if (f == 0 && state) //fingerID == 0)
                 {
                     finger0X = x;
                     finger0Y = y;
                     Vb = Global::clamp (Vb, -maxVb, maxVb);
-#ifdef EXPONENTIALBOW
-                    Fb = Global::clamp (Fb, 0, maxFb);
-                    trombaString->setBowingParameters (x, y, Fb, Vb, false);
-#else
-                    trombaString->setNoise (Fn * 0.2);
-                    trombaString->setBowingParameters (x, y, Fn, Vb, false);
-#endif
+                    if (trombaString->getBowModel() == exponential)
+                    {
+                        Fb = Global::clamp (Fb, 0, maxFb);
+                        trombaString->setBowingParameters (x, y, Fb, Vb, false);
+                    }
+                    else if (trombaString->getBowModel() == elastoPlastic)
+                    {
+                        trombaString->setNoise (abs(Vb) > 0.01 ? Fn * 0.1 : 0);
+                        trombaString->setBowingParameters (x, y, Fn, Vb, false);
+                    }
  
                 }
                 else if (fingerID > 0)
@@ -360,17 +385,19 @@ void MainComponent::buttonClicked (Button* button)
     }
     if (button == outputButton.get())
     {
-        if (outputMass)
+        if (trombaString->getBowModel() == elastoPlastic)
         {
-            outputButton->setButtonText("change output");
-            std::cout << "plate" << std::endl;
+            outputButton->setButtonText("Cur bow: exp");
+            std::cout << "bow model is exponential" << std::endl;
+            trombaString->setBowModel (exponential);
         }
-        else
+        else if (trombaString->getBowModel() == exponential)
         {
-            outputButton->setButtonText("change output");
-            std::cout << "mass" << std::endl;
+            outputButton->setButtonText("Cur bow: elasto");
+            std::cout << "bow model is elastoplastic" << std::endl;
+            trombaString->setBowModel (elastoPlastic);
+
         }
-        outputMass = !outputMass;
     }
 }
 
@@ -384,5 +411,9 @@ void MainComponent::sliderValueChanged(Slider* slider)
             return;
         }
     }
-        
+//    if (slider == parameterSliders[0])
+//    {
+//        mixVals[0] = mixSliders[0]->getValue();
+//        return;
+//    }
 }

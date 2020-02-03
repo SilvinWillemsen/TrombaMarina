@@ -12,31 +12,31 @@
 #include "Tromba.h"
 
 //==============================================================================
-Tromba::Tromba (NamedValueSet& parameters, double k)  : k (k),
-                                                        rhoS (*parameters.getVarPointer ("rhoS")),
-                                                        A (*parameters.getVarPointer ("A")),
-                                                        T (*parameters.getVarPointer ("T")),
-                                                        ES (*parameters.getVarPointer ("ES")),
-                                                        Iner (*parameters.getVarPointer ("Iner")),
-                                                        s0S (*parameters.getVarPointer ("s0S")),
-                                                        M (*parameters.getVarPointer ("M")),
-                                                        R (*parameters.getVarPointer ("R")),
-                                                        w1 (*parameters.getVarPointer ("w1")),
-                                                        rhoP (*parameters.getVarPointer ("rhoP")),
-                                                        H (*parameters.getVarPointer ("H")),
-                                                        s0P (*parameters.getVarPointer ("s0P")),
-                                                        K1 (*parameters.getVarPointer ("K1")),
-                                                        alph1 (*parameters.getVarPointer ("alpha1")),
-                                                        connRatio (*parameters.getVarPointer ("connRatio")),
-                                                        K2 (*parameters.getVarPointer ("K2")),
-                                                        alph2 (*parameters.getVarPointer ("alpha2")),
-                                                        colRatioX (*parameters.getVarPointer ("colRatioX")),
-                                                        colRatioY (*parameters.getVarPointer ("colRatioY"))
-
+Tromba::Tromba (NamedValueSet& parameters, double k, BowModel bowModel)  :
+                    k (k),
+                    rhoS (*parameters.getVarPointer ("rhoS")),
+                    A (*parameters.getVarPointer ("A")),
+                    T (*parameters.getVarPointer ("T")),
+                    ES (*parameters.getVarPointer ("ES")),
+                    Iner (*parameters.getVarPointer ("Iner")),
+                    s0S (*parameters.getVarPointer ("s0S")),
+                    M (*parameters.getVarPointer ("M")),
+                    R (*parameters.getVarPointer ("R")),
+                    w1 (*parameters.getVarPointer ("w1")),
+                    rhoP (*parameters.getVarPointer ("rhoP")),
+                    H (*parameters.getVarPointer ("H")),
+                    s0P (*parameters.getVarPointer ("s0P")),
+                    K1 (*parameters.getVarPointer ("K1")),
+                    alph1 (*parameters.getVarPointer ("alpha1")),
+                    connRatio (*parameters.getVarPointer ("connRatio")),
+                    K2 (*parameters.getVarPointer ("K2")),
+                    alph2 (*parameters.getVarPointer ("alpha2")),
+                    colRatioX (*parameters.getVarPointer ("colRatioX")),
+                    colRatioY (*parameters.getVarPointer ("colRatioY"))
 {
     kSq = k * k;
     
-    trombaString = std::make_shared<TrombaString> (parameters, k);
+    trombaString = std::make_shared<TrombaString> (parameters, k, bowModel);
     bridge = std::make_shared<Bridge> (parameters, k);
     body = std::make_shared<Body> (parameters, k);
     

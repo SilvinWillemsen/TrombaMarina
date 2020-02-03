@@ -10,7 +10,6 @@
 
 #pragma once
 #define CUBICINTERPOL
-//#define EXPONENTIALBOW
 
 namespace Global
 {
@@ -106,4 +105,12 @@ namespace Global
     static bool exciteString = true;
     static bool exciteBody = false;
     static double outputScaling = debug ? 1.0 : 1000.0;
+    
+    
 }
+
+enum BowModel
+{
+    exponential,
+    elastoPlastic
+};

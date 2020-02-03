@@ -19,7 +19,7 @@
 class TrombaString    : public Component
 {
 public:
-    TrombaString (NamedValueSet& parameters, double k);
+    TrombaString (NamedValueSet& parameters, double k, BowModel bowModel);
     ~TrombaString();
 
     void paint (Graphics&) override;
@@ -62,7 +62,6 @@ public:
     double getNRiterator() { return NRiterator; };
     double getVb() { return Vb; };
     
-#ifndef EXPONENTIALBOW
     void calcZDot();
     void setNoise (double val) { sig3 = val; };
     
@@ -71,17 +70,19 @@ public:
         _fC.store(mud * val);
         _fS.store(mus * val);
     };
-#endif
+    
+    BowModel getBowModel() { return bowModel.load(); };
+    void setBowModel (BowModel bm) { bowModel.store (bm); };
     
 private:
     double k, h;
     int N;
     
     // Physical parameters
-    double rho, A, T, E, Iner, s0, s1, cSq, kappaSq, lambdaSq, muSq;
+    double L, rho, A, T, E, Iner, s0, s1, cSq, kappaSq, lambdaSq, muSq;
     
     // update equation constants
-    double A1, A2, A3, A4, A5, B1, B2, C1, C2, D, E1;
+    double A1, A2, A3, A4, A5, B1, B2, C1, C2, D, Eexp, Eelasto;
     
     // NR bow constants
     double b1, b2;
@@ -126,5 +127,7 @@ private:
     double bridgeState;
     
     std::atomic<double> _dampingFingerPos;
+    
+    std::atomic<BowModel> bowModel;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TrombaString)
 };
