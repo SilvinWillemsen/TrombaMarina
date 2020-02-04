@@ -60,7 +60,8 @@ private:
     std::unique_ptr<TextButton> createCButton;
     
     double bridgeLocRatio;
-    
+    double outputStringRatio;
+
     // Sensel Stuff
     OwnedArray<Sensel> sensels;
     int amountOfSensels = 1;
@@ -80,6 +81,8 @@ private:
     double maxFb = 0.1;
     double maxFn = 0.7;
     double maxNoise = 0.5;
+    
+    bool quantisePitch = true;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

@@ -56,6 +56,7 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k, BowModel bowMod
     lambdaSq = cSq * k * k / (h * h);
     muSq = k * k * kappaSq / (h * h * h * h);
     
+    std::cout << "Courant number: " << (lambdaSq + 4.0 * muSq) << std::endl;
     // Newton Variables bow model
     cOhSq = cSq / (h * h);
     kOhhSq = kappaSq / (h * h * h * h);
@@ -68,7 +69,7 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k, BowModel bowMod
     // Elasto-Plastic bow model
     
     //// the Contact Force (be with you) //////
-    mus = 0.8; // static friction coeff
+    mus = 0.6; // static friction coeff
     mud = 0.1; // dynamic friction coeff (must be < mus!!) %EDIT: and bigger than 0
     strv = 0.1;      // "stribeck" velocity
     
@@ -80,7 +81,7 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k, BowModel bowMod
     sig0 = 10000;                   // bristle stiffness
     sig1 = 0.001*sqrt(sig0);          // bristle damping
     sig2 = 0.6;                     // viscous friction term
-    sig3 = 0.0;                       // noise term
+    sig3 = 0.1;                       // noise term
     oOstrvSq = 1.0 / (strv * strv);   // One over strv^2
     z_ba = 0.7 * fC / sig0;         // break-away displacement (has to be < f_c/sigma_0!!)
     
@@ -107,12 +108,14 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k, BowModel bowMod
     b2 = (2.0 * s1) / (k * h * h);
     
     A1 = 2.0 - 2.0 * lambdaSq - 6.0 * muSq - 2.0 * B2;
+    A1ss = 2.0 - 2.0 * lambdaSq - 5.0 * muSq - 2.0 * B2;
     A2 = lambdaSq + 4.0 * muSq + B2;
     A3 = muSq;
     A4 = B1 - 1.0 + 2.0 * B2;
     A5 = B2;
     
     A1 *= D;
+    A1ss *= D;
     A2 *= D;
     A3 *= D;
     A4 *= D;
@@ -150,13 +153,22 @@ void TrombaString::paint (Graphics& g)
     */
 
     g.fillAll (getLookAndFeel().findColour (ResizableWindow::backgroundColourId));   // clear the background
+    g.setColour (Colours::grey);
+    double ratioFingerToBridge = _dampingFingerPos.load() / connRatio;
+    for (double i = 1.0; i < round(1.0 / ratioFingerToBridge); ++i)
+    {
+        g.drawLine (i / double(round(1.0 / ratioFingerToBridge)) * connRatio * getWidth(), 0.0, i / double(round(1.0 / ratioFingerToBridge)) * connRatio * getWidth(), getHeight());
+    }
     g.setColour (Colours::cyan);
     int visualScaling = Global::outputScaling * 100;
-    Path stringPath = visualiseState (visualScaling);
+    Path stringPath = visualiseState (visualScaling, g);
     g.strokePath (stringPath, PathStrokeType(2.0f));
     g.setColour (Colours::yellow);
-    g.drawEllipse(_dampingFingerPos.load() * getWidth(), getHeight() * 0.5, 2, 2, 5);
-    double opa = _Fb.load() * 10.0;
+    
+    if (_dampingFingerForce.load() != 0)
+        g.drawEllipse (_dampingFingerPos.load() * getWidth(), getHeight() * 0.5, 2, 2, (_dampingFingerForce.load() * 0.8 + 0.2) * 20.0);
+    
+    double opa = bowModel == exponential ? _Fb.load() * 10.0 : _Fn.load() * 10.0;
     if (opa >= 1.0)
     {
         g.setOpacity(1.0);
@@ -176,7 +188,7 @@ void TrombaString::resized()
 
 }
 
-Path TrombaString::visualiseState (int visualScaling)
+Path TrombaString::visualiseState (int visualScaling, Graphics& g)
 {
     auto stringBounds = getHeight() / 2.0;
     Path stringPath;
@@ -197,6 +209,7 @@ Path TrombaString::visualiseState (int visualScaling)
         if (isnan(newY))
             newY = 0;
         stringPath.lineTo(x, newY);
+//        g.drawEllipse(x, newY, 2, 2, 5);
         x += spacing;
     }
     stringPath.lineTo(stateWidth, stringBounds - visualScaling * offset);
@@ -209,6 +222,10 @@ void TrombaString::calculateUpdateEq()
     {
         u[0][l] = A1 * u[1][l] + A2 * (u[1][l + 1] + u[1][l - 1]) - A3 * (u[1][l + 2] + u[1][l - 2]) + A4 * u[2][l] - A5 * (u[2][l + 1] + u[2][l - 1]);
     }
+    int l = 1;
+    u[0][l] = A1ss * u[1][l] + A2 * (u[1][l + 1] + u[1][l - 1]) - A3 * (u[1][l + 2] + 2.0 * offset) + A4 * u[2][l] - A5 * (u[2][l + 1] + u[2][l - 1]);
+    l = N - 2;
+    u[0][l] = A1ss * u[1][l] + A2 * (u[1][l + 1] + u[1][l - 1]) - A3 * (u[1][l - 2] + 2.0 * offset) + A4 * u[2][l] - A5 * (u[2][l + 1] + u[2][l - 1]);
     
     if (!bowing)
     {
@@ -239,7 +256,8 @@ void TrombaString::dampingFinger()
 {
     float dampLoc = Global::clamp(_dampingFingerPos.load() * N, 3, N - 4);
     double uVal = Global::interpolation(u[0], floor(dampLoc), dampLoc - floor(dampLoc)) - offset;
-    Global::extrapolation (u[0], floor(dampLoc), dampLoc - floor(dampLoc), -(uVal - uVal * 0.96));
+    double dampingScaling = 1.0 - _dampingFingerForce.load();
+    Global::extrapolation (u[0], floor(dampLoc), pow(dampLoc - floor(dampLoc), 7), -(uVal - uVal * dampingScaling));
 }
 
 void TrombaString::updateStates()

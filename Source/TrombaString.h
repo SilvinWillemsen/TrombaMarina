@@ -25,7 +25,7 @@ public:
     void paint (Graphics&) override;
     void resized() override;
     
-    Path visualiseState (int visualScaling);
+    Path visualiseState (int visualScaling, Graphics& g);
     void setBridgeState (double val) { bridgeState = val; };
     
     void calculateUpdateEq();
@@ -54,6 +54,7 @@ public:
     void setBowingParameters (float x, float y, double Fb, double Vb, bool mouseInteraction);
     
     void setFingerPos (double val) { _dampingFingerPos.store(val); };
+    void setFingerForce (double val) { _dampingFingerForce.store(val); };
     
     // debug getters
     int getBowPos() { return bp; };
@@ -82,7 +83,7 @@ private:
     double L, rho, A, T, E, Iner, s0, s1, cSq, kappaSq, lambdaSq, muSq;
     
     // update equation constants
-    double A1, A2, A3, A4, A5, B1, B2, C1, C2, D, Eexp, Eelasto;
+    double A1, A1ss, A2, A3, A4, A5, B1, B2, C1, C2, D, Eexp, Eelasto;
     
     // NR bow constants
     double b1, b2;
@@ -126,7 +127,7 @@ private:
     int connPos;
     double bridgeState;
     
-    std::atomic<double> _dampingFingerPos;
+    std::atomic<double> _dampingFingerPos, _dampingFingerForce;
     
     std::atomic<BowModel> bowModel;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TrombaString)

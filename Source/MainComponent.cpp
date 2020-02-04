@@ -54,6 +54,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         std::cout << "Sensel added" << std::endl;
     }
     
+    BowModel initBowModel = exponential;
     if (Global::debug)
     {
         continueButton = std::make_unique<TextButton>("ContinueButton");
@@ -80,7 +81,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         addAndMakeVisible (currentSampleLabel.get());
         
         outputButton = std::make_unique<TextButton>("ContinueButton");
-        outputButton->setButtonText ("Cur bow: elasto");
+        outputButton->setButtonText (initBowModel == exponential ? "Cur bow: exp" : "Cur bow: elasto");
         addAndMakeVisible (outputButton.get());
         outputButton->addListener (this);
         
@@ -94,13 +95,13 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
             switch (i)
             {
                 case 0:
-                    newSlider->setValue (0.5);
+                    newSlider->setValue (0.25);
                     break;
                 case 1:
                     newSlider->setValue (0.0);
                     break;
                 case 2:
-                    newSlider->setValue (0.75);
+                    newSlider->setValue (0.5);
                     break;
             }
             mixVals[i] = newSlider->getValue();
@@ -116,17 +117,18 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     
     NamedValueSet parameters;
     
-    offset = 1e-5;
+    offset = 5e-6;
     
     // string
     double r = 0.0005;
-    double f0 = 60.0;
+    double f0 = 52.0;
     double rhoS = 7850.0;
     double A = r * r * double_Pi;
-    double L = 1.0;
+    double L = 1.90;
     double T = (f0 * f0 * L * L * 4.0) * rhoS * A;
     
-    bridgeLocRatio = 18.0 / 20.0;
+    bridgeLocRatio = 1.65 / 1.90;
+    outputStringRatio = (1.0 - bridgeLocRatio);
     parameters.set ("L", L);
     parameters.set ("rhoS", rhoS);
     parameters.set ("r", r);
@@ -134,8 +136,8 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     parameters.set ("T", T);
     parameters.set ("ES", 2e11);
     parameters.set ("Iner", r * r * r * r * double_Pi * 0.25);
-    parameters.set ("s0S", 0.08);
-    parameters.set ("s1S", 0.02);
+    parameters.set ("s0S", 0.1);
+    parameters.set ("s1S", 0.05);
     
     // bridge
     parameters.set ("M", 0.001);
@@ -161,7 +163,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     parameters.set ("K2", 5.0e8);
     parameters.set ("alpha2", 1.0);
     parameters.set ("colRatioX", 0.8);
-    parameters.set ("colRatioY", 0.5);
+    parameters.set ("colRatioY", 0.75);
     
     int numDynamicParameters = 3;
     initParams.resize (numDynamicParameters);
@@ -174,18 +176,18 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         newSlider->addListener (this);
         addAndMakeVisible (newSlider);
     }
-    initParams[0] = *parameters.getVarPointer ("s0P");
-    initParams[1] = *parameters.getVarPointer ("s1P");
-    initParams[2] = *parameters.getVarPointer ("w1");
+//    initParams[0] = *parameters.getVarPointer ("s0P");
+//    initParams[1] = *parameters.getVarPointer ("s1P");
+//    initParams[2] = *parameters.getVarPointer ("w1");
     
-    tromba = std::make_unique<Tromba> (parameters, k, elastoPlastic);
+    tromba = std::make_unique<Tromba> (parameters, k, initBowModel);
     addAndMakeVisible (tromba.get());
     
     trombaString = tromba->getString();
     bridge = tromba->getBridge();
     body = tromba->getBody();
     
-    double test = (bridgeLocRatio) * 0.5 + 1.0 / trombaString->getNumPoints();
+    double test = (bridgeLocRatio) * 0.5;
     trombaString->setFingerPos (test);
     std::cout << "fingerPos = " << test << std::endl;
     setSize (800, 600);
@@ -243,9 +245,9 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
         for (int j = 0; j < 3; ++j)
             prevMixVals[j] = aG * prevMixVals[j] + (1-aG) * mixVals[j];
         
-        output = tromba->getOutput(9.0 / 10.0) * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * prevMixVals[0]
+        output = tromba->getOutput(outputStringRatio) * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * prevMixVals[0]
                 + tromba->getOutput() * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * prevMixVals[1]
-                + tromba->getOutput(0.8, 0.5) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling) * prevMixVals[2];
+                + tromba->getOutput(0.8, 0.75) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling) * prevMixVals[2];
 //        else
 //            output = tromba->getOutput(0.8, 0.5) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling);
         channelData1[i] = Global::outputClamp (output);
@@ -298,8 +300,6 @@ void MainComponent::resized()
                 mixSliders[i]->setBounds(controlArea.removeFromLeft(100.0 * oOMSsize));
             }
             
-            
-//            mixSliders[0]->setBounds(controlArea)
         }
     }
     
@@ -328,6 +328,7 @@ void MainComponent::hiResTimerCallback()
             sensel->check();
             unsigned int fingerCount = sensel->contactAmount;
             int index = sensel->senselIndex;
+            trombaString->setFingerForce (0.0);
             for (int f = 0; f < fingerCount; f++)
             {
                 bool state = sensel->fingers[f].state;
@@ -364,7 +365,15 @@ void MainComponent::hiResTimerCallback()
                     //                    std::cout << horDist << std::endl;
                     if (!(verDist <= 0.3 && horDist < 0.05))
                     {
-                        trombaString->setFingerPos (x);
+                        if (quantisePitch){
+                            std::cout << "before " << x << std::endl;
+                            x = 1.0 / round (1.0 / x);
+                            std::cout << "after " << x << std::endl;
+                        }
+                        
+                        trombaString->setFingerPos (x * bridgeLocRatio);
+//                        std::cout << "force = " << sensel->fingers[f].force << std::endl;
+                        trombaString->setFingerForce (Global::clamp(sensel->fingers[f].force * 10.0, 0.0, 1.0));
                     }
                 }
             }
