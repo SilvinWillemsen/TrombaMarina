@@ -189,10 +189,12 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     
     double test = (bridgeLocRatio) * 0.5;
     trombaString->setFingerPos (test);
+    trombaString->setFingerForce (0.2);
+    
     std::cout << "fingerPos = " << test << std::endl;
     setSize (800, 600);
     Timer::startTimerHz (40);
-        
+    
     // start the hi-res timer
     if (sensels.size() != 0)
         if (sensels[0]->senselDetected)

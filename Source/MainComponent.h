@@ -82,7 +82,7 @@ private:
     double maxFn = 0.7;
     double maxNoise = 0.5;
     
-    bool quantisePitch = true;
+    bool quantisePitch = false;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };
