@@ -38,8 +38,8 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k, BowModel bowMod
 //    s0 = s0 * rho * A;
 //    s1 = s1 * rho * A;
     
-    N = floor (L * 0.95 / h);
-    h = L / N;
+    N = floor (0.95 / h);
+    h = 1.0 / static_cast<double> (N);
     std::cout << "String numpoints: " << N << std::endl;
     // initialise state vectors
     uVecs.reserve (3);

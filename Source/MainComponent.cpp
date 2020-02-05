@@ -341,8 +341,9 @@ void MainComponent::hiResTimerCallback()
                 float Fn = Global::clamp (sensel->fingers[f].force * 5.0, 0, maxFn);
                 
                 int fingerID = sensel->fingers[f].fingerID;
+                std::cout << "Finger " << f << ": " << fingerID << std::endl;
 //                trombaString->setFingerPos (0);
-                if (f == 0 && state) //fingerID == 0)
+                if (fingerID == 0 && state) //fingerID == 0)
                 {
                     finger0X = x;
                     finger0Y = y;
