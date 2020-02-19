@@ -83,6 +83,7 @@ private:
     double maxNoise = 0.5;
     
     bool quantisePitch = false;
+    bool easyControl = true;
     
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

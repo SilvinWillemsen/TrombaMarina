@@ -38,8 +38,8 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k, BowModel bowMod
 //    s0 = s0 * rho * A;
 //    s1 = s1 * rho * A;
     
-    N = floor (0.95 / h);
-    h = 1.0 / static_cast<double> (N);
+    N = floor (L * 0.95 / h);
+    h = L /  static_cast<double> (N);
     std::cout << "String numpoints: " << N << std::endl;
     // initialise state vectors
     uVecs.reserve (3);
@@ -256,8 +256,9 @@ void TrombaString::dampingFinger()
 {
     float dampLoc = Global::clamp(_dampingFingerPos.load() * N, 3, N - 4);
     double uVal = Global::interpolation(u[0], floor(dampLoc), dampLoc - floor(dampLoc)) - offset;
-    double dampingScaling = 1.0 - _dampingFingerForce.load();
-    Global::extrapolation (u[0], floor(dampLoc), pow(dampLoc - floor(dampLoc), 7), -(uVal - uVal * dampingScaling));
+//    double dampingScaling = 1.0 - _dampingFingerForce.load();
+//    Global::extrapolation (u[0], floor(dampLoc), pow(dampLoc - floor(dampLoc), 7), -(uVal - uVal * dampingScaling));
+    Global::extrapolation (u[0], floor(dampLoc), pow(dampLoc - floor(dampLoc), 7), -uVal * _dampingFingerForce.load());
 }
 
 void TrombaString::updateStates()
@@ -463,4 +464,22 @@ void TrombaString::calcZDot()
     
     // non-linear function estimate
     zDot = q * (1 - alph * z * oOZss);
+}
+
+void TrombaString::reset()
+{
+    for (int i = 0; i < uVecs.size(); ++i)
+    {
+        for (int j = 0; j < uVecs[i].size(); ++j)
+        {
+            uVecs[i][j] = offset;
+        }
+    }
+    q = 0;
+    qPrev = 0;
+    z = 0;
+    zPrev = 0;
+    zDotPrev = 0;
+    anPrev = 0;
+    _dampingFingerPos.store (0.5 * connRatio);
 }

@@ -52,6 +52,7 @@ public:
     bool isExcited() { return exciteFlag; };
     double getGridSpacing() { return h; };
     
+    void reset();
 private:
     double k, h;
     int N, Nx, Ny;

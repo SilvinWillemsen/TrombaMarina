@@ -80,8 +80,8 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         currentSampleLabel->setColour (Label::textColourId, Colours::white);
         addAndMakeVisible (currentSampleLabel.get());
         
-        outputButton = std::make_unique<TextButton>("ContinueButton");
-        outputButton->setButtonText (initBowModel == exponential ? "Cur bow: exp" : "Cur bow: elasto");
+        outputButton = std::make_unique<TextButton>("reset");
+        outputButton->setButtonText ("Reset");
         addAndMakeVisible (outputButton.get());
         outputButton->addListener (this);
         
@@ -121,7 +121,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     
     // string
     double r = 0.0005;
-    double f0 = 52.0;
+    double f0 = 32.0;
     double rhoS = 7850.0;
     double A = r * r * double_Pi;
     double L = 1.90;
@@ -189,7 +189,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     
     double test = (bridgeLocRatio) * 0.5;
     trombaString->setFingerPos (test);
-    trombaString->setFingerForce (0.2);
+    trombaString->setFingerForce (0.1);
     
     std::cout << "fingerPos = " << test << std::endl;
     setSize (800, 600);
@@ -250,8 +250,7 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
         output = tromba->getOutput(outputStringRatio) * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * prevMixVals[0]
                 + tromba->getOutput() * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * prevMixVals[1]
                 + tromba->getOutput(0.8, 0.75) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling) * prevMixVals[2];
-//        else
-//            output = tromba->getOutput(0.8, 0.5) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling);
+  
         channelData1[i] = Global::outputClamp (output);
         channelData2[i] = Global::outputClamp (output);
     }
@@ -291,15 +290,17 @@ void MainComponent::resized()
             currentSampleLabel->setBounds (debugArea.removeFromLeft (100));
         } else {
             Rectangle<int> controlArea = totalArea.removeFromRight(100);
-            tromba->setBounds (totalArea.removeFromTop(getHeight() - 100));
-            outputButton->setBounds(controlArea.removeFromBottom(100));
-            stateLabel->setBounds (controlArea.removeFromTop (20));
-            controlArea.removeFromTop (10);
-            currentSampleLabel->setBounds (controlArea.removeFromTop (20));
+            tromba->setBounds (totalArea.removeFromTop(getHeight()));
+            controlArea.reduce (10, 10);
+            outputButton->setBounds (controlArea.removeFromBottom(30));
+            controlArea.removeFromBottom (10);
+//            stateLabel->setBounds (controlArea.removeFromTop (20));
+//            controlArea.removeFromTop (10);
+//            currentSampleLabel->setBounds (controlArea.removeFromTop (20))
             float oOMSsize = 1.0 / static_cast<float> (mixSliders.size());
             for (int i = 0; i < mixSliders.size(); ++i)
             {
-                mixSliders[i]->setBounds(controlArea.removeFromLeft(100.0 * oOMSsize));
+                mixSliders[i]->setBounds(controlArea.removeFromLeft(80.0 * oOMSsize));
             }
             
         }
@@ -330,7 +331,8 @@ void MainComponent::hiResTimerCallback()
             sensel->check();
             unsigned int fingerCount = sensel->contactAmount;
             int index = sensel->senselIndex;
-            trombaString->setFingerForce (0.0);
+            if (!easyControl)
+                trombaString->setFingerForce (0.0);
             for (int f = 0; f < fingerCount; f++)
             {
                 bool state = sensel->fingers[f].state;
@@ -341,7 +343,7 @@ void MainComponent::hiResTimerCallback()
                 float Fn = Global::clamp (sensel->fingers[f].force * 5.0, 0, maxFn);
                 
                 int fingerID = sensel->fingers[f].fingerID;
-                std::cout << "Finger " << f << ": " << fingerID << std::endl;
+//                std::cout << "Finger " << f << ": " << fingerID << std::endl;
 //                trombaString->setFingerPos (0);
                 if (fingerID == 0 && state) //fingerID == 0)
                 {
@@ -376,7 +378,8 @@ void MainComponent::hiResTimerCallback()
                         
                         trombaString->setFingerPos (x * bridgeLocRatio);
 //                        std::cout << "force = " << sensel->fingers[f].force << std::endl;
-                        trombaString->setFingerForce (Global::clamp(sensel->fingers[f].force * 10.0, 0.0, 1.0));
+                        if (!easyControl)
+                            trombaString->setFingerForce (Global::clamp(sensel->fingers[f].force * 10.0, 0.0, 1.0));
                     }
                 }
             }
@@ -397,19 +400,23 @@ void MainComponent::buttonClicked (Button* button)
     }
     if (button == outputButton.get())
     {
-        if (trombaString->getBowModel() == elastoPlastic)
-        {
-            outputButton->setButtonText("Cur bow: exp");
-            std::cout << "bow model is exponential" << std::endl;
-            trombaString->setBowModel (exponential);
-        }
-        else if (trombaString->getBowModel() == exponential)
-        {
-            outputButton->setButtonText("Cur bow: elasto");
-            std::cout << "bow model is elastoplastic" << std::endl;
-            trombaString->setBowModel (elastoPlastic);
-
-        }
+        tromba->reset();
+        mixSliders[0]->setValue (0.25);
+        mixSliders[1]->setValue (0.0);
+        mixSliders[2]->setValue (0.5);
+//        if (trombaString->getBowModel() == elastoPlastic)
+//        {
+//            outputButton->setButtonText("Cur bow: exp");
+//            std::cout << "bow model is exponential" << std::endl;
+//            trombaString->setBowModel (exponential);
+//        }
+//        else if (trombaString->getBowModel() == exponential)
+//        {
+//            outputButton->setButtonText("Cur bow: elasto");
+//            std::cout << "bow model is elastoplastic" << std::endl;
+//            trombaString->setBowModel (elastoPlastic);
+//
+//        }
     }
 }
 

@@ -53,7 +53,7 @@ public:
     
     void setBowingParameters (float x, float y, double Fb, double Vb, bool mouseInteraction);
     
-    void setFingerPos (double val) { _dampingFingerPos.store(val); };
+    void setFingerPos (double val) { _dampingFingerPos.store (Global::clamp (val, 0.0, 0.5 * connRatio)); };
     void setFingerForce (double val) { _dampingFingerForce.store(val); };
     
     // debug getters
@@ -75,6 +75,7 @@ public:
     BowModel getBowModel() { return bowModel.load(); };
     void setBowModel (BowModel bm) { bowModel.store (bm); };
     
+    void reset();
 private:
     double k, h;
     int N;
