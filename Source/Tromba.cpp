@@ -127,11 +127,15 @@ Tromba::Tromba (NamedValueSet& parameters, double k, BowModel bowModel)  :
 
     etaCol = body->getStateAt (1, cPX, cPY) - bridge->getState(1);
     etaColPrev = body->getStateAt (2, cPX, cPY) - bridge->getState(2);
+    
+    psi2Output.open ("psi2Output.csv");
 
 }
 
 Tromba::~Tromba()
 {
+    psi2Output.close();
+
 }
 
 void Tromba::paint (Graphics& g)
@@ -161,11 +165,10 @@ void Tromba::calculateCollisions()
     etaConnPrev = bridge->getState(2) - trombaString->getStateAt (2, floor(connRatio * trombaString->getNumPoints()));
     etaColPrev = body->getStateAt(2, cPX, cPY) - bridge->getState(2);
 
-    kappa1 = psi1Prev < 0 ? -1 : 1;
     kappa2 = psi2Prev < 0 ? -1 : 1;
 
 //    g1 = Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
-    g1 = kappa1 * Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
+    g1 = Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
 //    if (abs(etaConn) >= 0)
 //    {
 //        g1 = kappa1 * Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
@@ -252,8 +255,8 @@ void Tromba::solveSystem()
     
     psi1 = g1 * k * solut1 + psi1Prev;
     psi2 = g2 * k * solut2 + psi2Prev;
-    
-//    if (counter % 512 == 0)
+
+    //    if (counter % 512 == 0)
 //        std::cout << psi1 << " " << psi2 << std::endl;
     
     trombaString->addToStateAt(cP, kSqOStringTerm * oOhS * g1 * 0.5 * (psi1 + psi1Prev));

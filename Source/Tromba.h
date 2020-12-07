@@ -97,5 +97,7 @@ private:
     unsigned long curSample;
     
     long counter = 0;
+    bool psiFlag = true;
+    
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Tromba)
 };

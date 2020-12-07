@@ -188,6 +188,8 @@ void TrombaString::paint (Graphics& g)
 void TrombaString::resized()
 {
     setBowingParameters (getWidth() / 3.0, getHeight() / 4.0, 0.1, 0.2, true);
+    if (!Global::exciteString)
+        bowFlag = false;
 }
 
 Path TrombaString::visualiseState (int visualScaling, Graphics& g)
