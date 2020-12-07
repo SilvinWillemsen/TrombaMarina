@@ -72,6 +72,10 @@ private:
     double colRatioX, colRatioY;
     int cPX, cPY;
     
+    // New method variables
+    double kappa1, kappa2;
+    double etaConnNext, etaColNext, etaConnPrev, etaColPrev;
+    
     // Connection calculation coefficients
     double A1S, A2S, A3S, A4S, A5S, B1S, B2S, B3S, B4S, B5S, DS;
     double B1B, B2B, B3B, DB;

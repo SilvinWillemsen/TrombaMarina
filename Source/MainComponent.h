@@ -10,6 +10,9 @@
 #include "../JuceLibraryCode/JuceHeader.h"
 #include "../SenselWrapper/SenselWrapper.h"
 #include "Tromba.h"
+#include <iostream>
+#include <fstream>
+
 
 //==============================================================================
 /*
@@ -86,5 +89,8 @@ private:
     bool quantisePitch = false;
     bool easyControl = false;
     bool graphicsToggle = false;
+    
+    std::ofstream outputSound;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

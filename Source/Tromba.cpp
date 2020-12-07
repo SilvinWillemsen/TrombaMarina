@@ -122,6 +122,12 @@ Tromba::Tromba (NamedValueSet& parameters, double k, BowModel bowModel)  :
     psi1Prev = 0;
     psi2Prev = 0;
     
+    etaConn =  bridge->getState(1) - trombaString->getStateAt (1, floor(connRatio * trombaString->getNumPoints()));
+    etaConnPrev =  bridge->getState(2) - trombaString->getStateAt (2, floor(connRatio * trombaString->getNumPoints()));
+
+    etaCol = body->getStateAt (1, cPX, cPY) - bridge->getState(1);
+    etaColPrev = body->getStateAt (2, cPX, cPY) - bridge->getState(2);
+
 }
 
 Tromba::~Tromba()
@@ -146,34 +152,44 @@ void Tromba::resized()
 
 void Tromba::calculateCollisions()
 {
+    etaConnNext = bridge->getState(0) - trombaString->getStateAt (0, floor(connRatio * trombaString->getNumPoints()));
+    etaColNext = body->getStateAt(0, cPX, cPY) - bridge->getState(0);
+    
     etaConn = bridge->getState(1) - trombaString->getStateAt (1, floor(connRatio * trombaString->getNumPoints()));
     etaCol = body->getStateAt(1, cPX, cPY) - bridge->getState(1);
-    g1 = Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
     
-//    g1 = 0;
-//    if (etaConn > 0)
+    etaConnPrev = bridge->getState(2) - trombaString->getStateAt (2, floor(connRatio * trombaString->getNumPoints()));
+    etaColPrev = body->getStateAt(2, cPX, cPY) - bridge->getState(2);
+
+    kappa1 = psi1Prev < 0 ? -1 : 1;
+    kappa2 = psi2Prev < 0 ? -1 : 1;
+
+//    g1 = Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
+    g1 = kappa1 * Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
+//    if (abs(etaConn) >= 0)
 //    {
-//        if (alph1 == 1)
+//        g1 = kappa1 * Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
+//    } else {
+//        if(etaConnNext - etaConnPrev != 0)
 //        {
-//            g1 = sqrt(K1 * (alph1 + 1.0) * 0.5);
+//            g1 = -2 * psi1Prev / (etaConnNext - etaConnPrev);
 //        } else {
-//            g1 = sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(etaConn, (alph1 - 1) * 0.5);
+//            DBG("DIVISION BY 0" + String(counter));
 //        }
-//    }
-//    if (g1 > 0)
-//    {
-//        std::cout << etaConn << std::endl;
-//        std::cout << "wait" << std::endl;
+//
 //    }
     g2 = 0;
-    if (etaCol > 0)
+    if (etaCol >= 0)
     {
-        if (alph2 == 1)
+        g2 = kappa2 * sqrt(K2 * (alph2 + 1.0) * 0.5) * pow(etaCol, (alph2 - 1) * 0.5);
+    } else {
+        if(etaColNext - etaColPrev != 0)
         {
-                g2 = sqrt(K2 * (alph2 + 1.0) * 0.5);
+            g2 = -2 * psi2Prev / (etaColNext - etaColPrev);
         } else {
-                g2 = sqrt(K2 * (alph2 + 1.0) * 0.5) * pow(etaCol, (alph2 - 1) * 0.5);
+            DBG("DIVISION BY 0" + String(counter));
         }
+        
     }
 //    if (g2 > 0)
 //    {
