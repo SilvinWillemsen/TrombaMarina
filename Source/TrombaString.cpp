@@ -39,6 +39,7 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k, BowModel bowMod
 //    s1 = s1 * rho * A;
     
     N = floor (L * 0.95 / h);
+    
     h = L /  static_cast<double> (N);
     std::cout << "String numpoints: " << N << std::endl;
     // initialise state vectors
@@ -137,6 +138,7 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k, BowModel bowMod
     }
     
     connPos = floor(connRatio * N);
+//    bowFlag = true;
 }
 
 TrombaString::~TrombaString()
@@ -177,15 +179,15 @@ void TrombaString::paint (Graphics& g)
     {
         g.setOpacity(opa);
     }
-    g.fillRect(xPos - 5, yPos - getHeight() * 0.25, 10, getHeight() * 0.5);
+    g.fillRect (xPos - 5, yPos - getHeight() * 0.25, 10, getHeight() * 0.5);
     
     g.setColour (Colours::lawngreen);
-    g.drawEllipse (connPos * h * getWidth(), getHeight() * 0.5 - (bridgeState * visualScaling), 2, 2, 5);
+    g.drawEllipse (connPos / static_cast<double> (N) * getWidth(), getHeight() * 0.5 - (bridgeState * visualScaling), 2, 2, 5);
 }
 
 void TrombaString::resized()
 {
-
+    setBowingParameters (getWidth() / 3.0, getHeight() / 4.0, 0.1, 0.2, true);
 }
 
 Path TrombaString::visualiseState (int visualScaling, Graphics& g)
@@ -259,6 +261,7 @@ void TrombaString::dampingFinger()
 //    double dampingScaling = 1.0 - _dampingFingerForce.load();
 //    Global::extrapolation (u[0], floor(dampLoc), pow(dampLoc - floor(dampLoc), 7), -(uVal - uVal * dampingScaling));
     Global::extrapolation (u[0], floor(dampLoc), pow(dampLoc - floor(dampLoc), 7), -uVal * _dampingFingerForce.load());
+//    std::cout << getStateAt (0, dampLoc) - offset << std::endl;
 }
 
 void TrombaString::updateStates()
@@ -277,8 +280,8 @@ void TrombaString::excite()
 //    int width = floor ((N * 2.0) / 5.0) / 2.0;
     int width = 10;
     int loc = floor (N * static_cast<float>(xPos) / static_cast<float>(getWidth()));
-    if (Global::debug)
-        loc = floor(N / 2.0);
+//    if (Global::debug)
+//        loc = floor(N / 2.0);
     
     int startIdx = Global::clamp (loc - width / 2.0, 2, N - 2 - width);
     double amp = Global::debug ? -offset * 10000.0 : 100.0;
@@ -310,7 +313,6 @@ void TrombaString::NRbow()
     if (getBowModel() == exponential)    // Calculate precalculable part
     {
         b = 2.0 / k * Vb + 2.0 * s0 * Vb - b1 * (uI - uIPrev) - cOhSq * (uI1 - 2.0 * uI + uIM1) + kOhhSq * (uI2 - 4.0 * uI1 + 6.0 * uI - 4.0 * uIM1 + uIM2) - b2 * ((uI1 - 2 * uI + uIM1) - (uIPrev1 - 2.0 * uIPrev + uIPrevM1));
-
 
         // NR loop
         while (eps > tol && NRiterator < 100)
@@ -420,7 +422,7 @@ void TrombaString::setBowingParameters (float x, float y, double Fb, double Vb, 
     xPos = x * (mouseInteraction ? 1 : getWidth());
     yPos = y * (mouseInteraction ? 1 : getHeight());
     bowFlag = true;
-    _Vb.store (Global::bowDebug || !mouseInteraction ? Vb : -(yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
+    _Vb.store (!mouseInteraction ? Vb : -(yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
     if (getBowModel() == exponential)
         _Fb.store (Fb);
     else if (getBowModel() == elastoPlastic)

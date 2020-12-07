@@ -66,7 +66,8 @@ private:
     OwnedArray<Sensel> sensels;
     int amountOfSensels = 1;
     
-    std::unique_ptr<TextButton> outputButton;
+    std::unique_ptr<TextButton> resetButton;
+    std::unique_ptr<ToggleButton> graphicsButton;
     OwnedArray<Slider> mixSliders;
     std::vector<float> mixVals;
     std::vector<float> prevMixVals;
@@ -83,7 +84,7 @@ private:
     double maxNoise = 0.5;
     
     bool quantisePitch = false;
-    bool easyControl = true;
-    
+    bool easyControl = false;
+    bool graphicsToggle = false;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };

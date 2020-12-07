@@ -116,7 +116,7 @@ private:
     std::atomic<double> _fC;
     std::atomic<double> _fS;
     std::atomic<double> _Vb {-0.2};
-    std::atomic<double> _bowPos {96};
+    std::atomic<double> _bowPos;
     double Fb, Vb, alpha;
     int bp;
     

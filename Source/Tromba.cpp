@@ -148,7 +148,8 @@ void Tromba::calculateCollisions()
 {
     etaConn = bridge->getState(1) - trombaString->getStateAt (1, floor(connRatio * trombaString->getNumPoints()));
     etaCol = body->getStateAt(1, cPX, cPY) - bridge->getState(1);
-    g1 = sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
+    g1 = Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
+    
 //    g1 = 0;
 //    if (etaConn > 0)
 //    {
@@ -216,7 +217,7 @@ void Tromba::solveSystem()
     a22 = 1.0 + gg2Ksq * oOMassTermO2 + gg2Ksq * oOPlateTermO2;
     
     oOdet = 1.0 / (a11 * a22 - a12 * a21);
-
+    counter++;
 //    if (curSample >= 19)
 //    {
 //        std::cout << "Sample "<< curSample << ": ";
@@ -235,6 +236,9 @@ void Tromba::solveSystem()
     
     psi1 = g1 * k * solut1 + psi1Prev;
     psi2 = g2 * k * solut2 + psi2Prev;
+    
+//    if (counter % 512 == 0)
+//        std::cout << psi1 << " " << psi2 << std::endl;
     
     trombaString->addToStateAt(cP, kSqOStringTerm * oOhS * g1 * 0.5 * (psi1 + psi1Prev));
     bridge->addToState (kSqOMassTerm * 0.5 * (-g1 * (psi1 + psi1Prev) + g2 * (psi2 + psi2Prev)));

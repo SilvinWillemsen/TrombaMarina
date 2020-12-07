@@ -34,7 +34,7 @@ public:
     void calculateUpdateEqs();
     void updateStates();
     
-    double getOutput() { return bridge->getOutput() * 10; };
+    double getOutput() { return bridge->getOutput(); };
     double getOutput (double ratio) { return trombaString->getOutput (ratio); };
     double getOutput (double ratioX, double ratioY) { return body->getOutput (ratioX, ratioY); };
     
@@ -91,5 +91,7 @@ private:
     double oOhS, oOhPSq, oOk, oO2k;
     
     unsigned long curSample;
+    
+    long counter = 0;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Tromba)
 };

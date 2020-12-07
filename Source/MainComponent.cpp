@@ -80,36 +80,42 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         currentSampleLabel->setColour (Label::textColourId, Colours::white);
         addAndMakeVisible (currentSampleLabel.get());
         
-        outputButton = std::make_unique<TextButton>("reset");
-        outputButton->setButtonText ("Reset");
-        addAndMakeVisible (outputButton.get());
-        outputButton->addListener (this);
+        resetButton = std::make_unique<TextButton>("reset");
+        resetButton->setButtonText ("Reset");
+        addAndMakeVisible (resetButton.get());
+        resetButton->addListener (this);
         
-        mixVals.resize(3);
-        prevMixVals.resize(3);
-        for (int i = 0; i < 3; ++i)
-        {
-            mixSliders.add (new Slider(Slider::LinearBarVertical, Slider::NoTextBox));
-            Slider* newSlider = mixSliders[mixSliders.size() - 1];
-            newSlider->setRange (0.0, 1.0, 0.001);
-            switch (i)
-            {
-                case 0:
-                    newSlider->setValue (0.25);
-                    break;
-                case 1:
-                    newSlider->setValue (0.0);
-                    break;
-                case 2:
-                    newSlider->setValue (0.5);
-                    break;
-            }
-            mixVals[i] = newSlider->getValue();
-            newSlider->addListener (this);
-            addAndMakeVisible (newSlider);
-            prevMixVals[i] = mixSliders[i]->getValue();
-        }
+        graphicsButton = std::make_unique<ToggleButton>("graphics");
+        graphicsButton->setButtonText ("Graphics");
+        addAndMakeVisible (graphicsButton.get());
+        graphicsButton->addListener (this);
     }
+    mixVals.resize(3);
+    prevMixVals.resize(3);
+    for (int i = 0; i < 3; ++i)
+    {
+        mixSliders.add (new Slider(Slider::LinearBarVertical, Slider::NoTextBox));
+        Slider* newSlider = mixSliders[mixSliders.size() - 1];
+        newSlider->setRange (0.0, 1.0, 0.001);
+        bool volumeDebug = false;
+        switch (i)
+        {
+            case 0:
+                newSlider->setValue (volumeDebug ? 1.0 : 0.25);
+                break;
+            case 1:
+                newSlider->setValue (volumeDebug ? 1.0 : 0.0);
+                break;
+            case 2:
+                newSlider->setValue (volumeDebug ? 1.0 : 0.5);
+                break;
+        }
+        mixVals[i] = newSlider->getValue();
+        newSlider->addListener (this);
+        addAndMakeVisible (newSlider);
+        prevMixVals[i] = mixSliders[i]->getValue();
+    }
+    
     continueFlag.store (true);
     fs = sampleRate;
     
@@ -187,11 +193,9 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     bridge = tromba->getBridge();
     body = tromba->getBody();
     
-    double test = (bridgeLocRatio) * 0.5;
-    trombaString->setFingerPos (test);
+    trombaString->setFingerPos (bridgeLocRatio * 0.5);
     trombaString->setFingerForce (0.1);
     
-    std::cout << "fingerPos = " << test << std::endl;
     setSize (800, 600);
     Timer::startTimerHz (40);
     
@@ -211,6 +215,8 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
     float* const channelData2 = bufferToFill.buffer->getWritePointer (1, bufferToFill.startSample);
     
     float output = 0.0;
+    float output2 = 0.0;
+    
     for (int i = 0; i < bufferToFill.numSamples; ++i)
     {
         if (trombaString->isExcited() && !trombaString->shouldBow())
@@ -222,12 +228,12 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
         {
             if (continueFlag.load() == true)
             {
-//                if (curSample % 1 == 0)
-//                    continueFlag.store (false);
+                if (curSample > 0 && curSample % 10 == 0)
+                    continueFlag.store (false);
                 tromba->setCurSample (curSample);
                 tromba->calculateUpdateEqs();
+                trombaString->dampingFinger();
                 tromba->calculateCollisions();
-//                tromba->calculateConnection();
                 tromba->solveSystem();
                 tromba->updateStates();
                 ++curSample;
@@ -248,12 +254,15 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
             prevMixVals[j] = aG * prevMixVals[j] + (1-aG) * mixVals[j];
         
         output = tromba->getOutput(outputStringRatio) * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * prevMixVals[0]
-                + tromba->getOutput() * (Global::debug ? 1.0 : 3.0 * Global::outputScaling) * prevMixVals[1]
-                + tromba->getOutput(0.8, 0.75) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling) * prevMixVals[2];
-  
+        + tromba->getOutput() * (Global::debug ? 1.0 : 30.0 * Global::outputScaling) * prevMixVals[1]
+        + tromba->getOutput(0.8, 0.75) * (Global::debug ? 1.0 : 50.0 * Global::outputScaling) * prevMixVals[2];
+//        output = (tromba->getOutput(outputStringRatio) + offset) * Global::outputScaling;
+//        output2 = tromba->getOutput(0.8, 0.75) * Global::outputScaling;
         channelData1[i] = Global::outputClamp (output);
         channelData2[i] = Global::outputClamp (output);
     }
+    
+    body->checkTinyValues();
 }
 
 void MainComponent::releaseResources()
@@ -292,8 +301,10 @@ void MainComponent::resized()
             Rectangle<int> controlArea = totalArea.removeFromRight(100);
             tromba->setBounds (totalArea.removeFromTop(getHeight()));
             controlArea.reduce (10, 10);
-            outputButton->setBounds (controlArea.removeFromBottom(30));
+            resetButton->setBounds (controlArea.removeFromBottom(30));
             controlArea.removeFromBottom (10);
+//            graphicsButton->setBounds (controlArea.removeFromBottom(30));
+//            controlArea.removeFromBottom (10);
 //            stateLabel->setBounds (controlArea.removeFromTop (20));
 //            controlArea.removeFromTop (10);
 //            currentSampleLabel->setBounds (controlArea.removeFromTop (20))
@@ -398,7 +409,7 @@ void MainComponent::buttonClicked (Button* button)
     {
         continueFlag.store (true);
     }
-    if (button == outputButton.get())
+    else if (button == resetButton.get())
     {
         tromba->reset();
         mixSliders[0]->setValue (0.25);
@@ -406,17 +417,25 @@ void MainComponent::buttonClicked (Button* button)
         mixSliders[2]->setValue (0.5);
 //        if (trombaString->getBowModel() == elastoPlastic)
 //        {
-//            outputButton->setButtonText("Cur bow: exp");
+//            resetButton->setButtonText("Cur bow: exp");
 //            std::cout << "bow model is exponential" << std::endl;
 //            trombaString->setBowModel (exponential);
 //        }
 //        else if (trombaString->getBowModel() == exponential)
 //        {
-//            outputButton->setButtonText("Cur bow: elasto");
+//            resetButton->setButtonText("Cur bow: elasto");
 //            std::cout << "bow model is elastoplastic" << std::endl;
 //            trombaString->setBowModel (elastoPlastic);
 //
 //        }
+    }
+    else if (button == graphicsButton.get())
+    {
+        if (graphicsToggle)
+            Timer::stopTimer();
+        else
+            Timer::startTimerHz(40);
+        graphicsToggle = !graphicsToggle;
     }
 }
 

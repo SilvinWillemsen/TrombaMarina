@@ -197,3 +197,10 @@ void Body::reset()
         }
     }
 }
+
+void Body::checkTinyValues()
+{
+    // once per buffer
+    if (abs(getOutput (0.8, 0.75)) < 1e-200)
+        reset();
+}

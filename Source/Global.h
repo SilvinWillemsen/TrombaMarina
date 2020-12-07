@@ -104,9 +104,7 @@ namespace Global
     static bool initialiseWithExcitation = false;
     static bool exciteString = true;
     static bool exciteBody = false;
-    static double outputScaling = debug ? 1.0 : 1000.0;
-    
-    
+    static double outputScaling = 1000.0;
 }
 
 enum BowModel

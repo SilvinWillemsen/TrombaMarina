@@ -52,7 +52,9 @@ public:
     bool isExcited() { return exciteFlag; };
     double getGridSpacing() { return h; };
     
+    void checkTinyValues();
     void reset();
+    
 private:
     double k, h;
     int N, Nx, Ny;
@@ -72,5 +74,6 @@ private:
     bool exciteFlag = false;
     int idX, idY;
 
+    int counter = 0;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Body)
 };
