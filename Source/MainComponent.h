@@ -87,7 +87,7 @@ private:
     double maxNoise = 0.5;
     
     bool quantisePitch = false;
-    bool easyControl = false;
+    bool easyControl = true;
     bool graphicsToggle = false;
     
     std::ofstream outputSound;

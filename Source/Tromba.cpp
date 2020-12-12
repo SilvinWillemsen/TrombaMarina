@@ -127,15 +127,11 @@ Tromba::Tromba (NamedValueSet& parameters, double k, BowModel bowModel)  :
 
     etaCol = body->getStateAt (1, cPX, cPY) - bridge->getState(1);
     etaColPrev = body->getStateAt (2, cPX, cPY) - bridge->getState(2);
-    
-    psi2Output.open ("psi2Output.csv");
 
 }
 
 Tromba::~Tromba()
 {
-    psi2Output.close();
-
 }
 
 void Tromba::paint (Graphics& g)
@@ -167,20 +163,8 @@ void Tromba::calculateCollisions()
 
     kappa2 = psi2Prev < 0 ? -1 : 1;
 
-//    g1 = Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
     g1 = Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
-//    if (abs(etaConn) >= 0)
-//    {
-//        g1 = kappa1 * Global::sgn (etaConn) * sqrt(K1 * (alph1 + 1.0) * 0.5) * pow(abs(etaConn),((alph1 - 1.0) * 0.5));
-//    } else {
-//        if(etaConnNext - etaConnPrev != 0)
-//        {
-//            g1 = -2 * psi1Prev / (etaConnNext - etaConnPrev);
-//        } else {
-//            DBG("DIVISION BY 0" + String(counter));
-//        }
-//
-//    }
+    
     g2 = 0;
     if (etaCol >= 0)
     {

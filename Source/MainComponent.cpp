@@ -101,7 +101,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         switch (i)
         {
             case 0:
-                newSlider->setValue (volumeDebug ? 1.0 : 0.0);
+                newSlider->setValue (volumeDebug ? 1.0 : 0.25);
                 break;
             case 1:
                 newSlider->setValue (volumeDebug ? 1.0 : 0.0);
@@ -161,7 +161,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
     parameters.set ("s1P", 0.05);
     
     // connection
-    parameters.set ("K1", 5.0e8);
+    parameters.set ("K1", 5.0e6);
     parameters.set ("alpha1", 1.3);
     parameters.set ("connRatio", bridgeLocRatio);
     
@@ -204,7 +204,7 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
         if (sensels[0]->senselDetected)
             HighResolutionTimer::startTimer (1000.0 / 150.0); // 150 Hz
     
-    outputSound.open ("outputSound.csv");
+//    outputSound.open ("outputSound.csv");
     
 }
 
@@ -262,7 +262,7 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
 //        output2 = tromba->getOutput(0.8, 0.75) * Global::outputScaling;
         channelData1[i] = Global::outputClamp (0.5 * output);
         channelData2[i] = Global::outputClamp (0.5 * output);
-        outputSound << output << ";\n";
+//        outputSound << output << ";\n";
     }
     
     body->checkTinyValues();
@@ -274,7 +274,7 @@ void MainComponent::releaseResources()
     // restarted due to a setting change.
 
     // For more details, see the help for AudioProcessor::releaseResources()
-    outputSound.close();
+//    outputSound.close();
 }
 
 //==============================================================================
