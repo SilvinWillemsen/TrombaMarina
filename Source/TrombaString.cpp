@@ -134,7 +134,7 @@ TrombaString::TrombaString (NamedValueSet& parameters, double k, BowModel bowMod
     if (Global::bowDebug && Global::exciteString && bowing)
     {
         bp = _bowPos.load();
-        setBowingParameters (0.0, 0.0, 1, 0.2, true);
+        setBowingParameters (0.0, 0.0, 1, -0.2, true);
     }
     
     connPos = floor(connRatio * N);
@@ -187,7 +187,7 @@ void TrombaString::paint (Graphics& g)
 
 void TrombaString::resized()
 {
-    setBowingParameters (getWidth() / 3.0, getHeight() / 4.0, 0.1, 0.2, true);
+    setBowingParameters (getWidth() / 3.0, getHeight() / 4.0, 1, -0.2, true);
     if (!Global::exciteString)
         bowFlag = false;
 }
@@ -425,6 +425,8 @@ void TrombaString::setBowingParameters (float x, float y, double Fb, double Vb, 
     yPos = y * (mouseInteraction ? 1 : getHeight());
     bowFlag = true;
     _Vb.store (!mouseInteraction ? Vb : -(yPos / static_cast<float> (getHeight()) - 0.5) * 2.0 * 0.2);
+    if (Global::debug)
+        _Vb.store (Vb);
     if (getBowModel() == exponential)
         _Fb.store (Fb);
     else if (getBowModel() == elastoPlastic)

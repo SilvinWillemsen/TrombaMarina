@@ -102,9 +102,11 @@ namespace Global
     static bool bowDebug = false;
     static int debugButtonsHeight = 100;
     static bool initialiseWithExcitation = false;
-    static bool exciteString = true;
+    static bool exciteString = false;
     static bool exciteBody = false;
     static double outputScaling = 1000.0;
+    
+    static bool takeSnapShots = false;
 }
 
 enum BowModel

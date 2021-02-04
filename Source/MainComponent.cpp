@@ -205,7 +205,13 @@ void MainComponent::prepareToPlay (int samplesPerBlockExpected, double sampleRat
             HighResolutionTimer::startTimer (1000.0 / 150.0); // 150 Hz
     
 //    outputSound.open ("outputSound.csv");
-    
+    if (Global::debug)
+        trombaString->setFingerForce (0.0);
+    stringState.open ("stringState.csv");
+    bridgeState.open ("bridgeState.csv");
+    bodyState.open ("bodyState.csv");
+    sampleNumber.open ("sampleNumber.csv");
+
 }
 
 void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFill)
@@ -231,7 +237,28 @@ void MainComponent::getNextAudioBlock (const AudioSourceChannelInfo& bufferToFil
             if (continueFlag.load() == true)
             {
                 if (curSample > 0 && curSample % 10 == 0)
+                {
                     continueFlag.store (false);
+                    for (int l = 0; l < trombaString->getNumPoints(); ++l)
+                    {
+                        stringState << trombaString->getStateAt (1, l) << ", ";
+                    }
+                    stringState << ";\n ";
+                    
+                    bridgeState << bridge->getState (1) << ";\n";
+                    
+                    for (int m = 0; m < body->getNumVertPoints(); ++m)
+                    {
+                        for (int l = 0; l < body->getNumHorPoints(); ++l)
+                        {
+                            bodyState << body->getStateAt (1, l, m);
+                            if (l != body->getNumHorPoints() - 1)
+                                bodyState << ", ";
+                        }
+                        bodyState << ";\n ";
+                    }
+                    sampleNumber << curSample << ";\n";
+                }
                 tromba->setCurSample (curSample);
                 tromba->calculateUpdateEqs();
                 trombaString->dampingFinger();
@@ -275,6 +302,11 @@ void MainComponent::releaseResources()
 
     // For more details, see the help for AudioProcessor::releaseResources()
 //    outputSound.close();
+    stringState.close();
+    bridgeState.close();
+    bodyState.close();
+    sampleNumber.close();
+
 }
 
 //==============================================================================

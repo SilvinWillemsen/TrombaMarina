@@ -91,6 +91,7 @@ private:
     bool graphicsToggle = false;
     
     std::ofstream outputSound;
-
+    std::ofstream stringState, bridgeState, bodyState;
+    std::ofstream sampleNumber;
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MainComponent)
 };
